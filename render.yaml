@@ -4,24 +4,23 @@ services:
     env: python
     region: singapore
     plan: free
- 
-    # Pin Python version — type hints (X | Y syntax) require 3.10+
-    pythonVersion: "3.11.0"
- 
+
     buildCommand: >
       cd frontend && npm install && npm run build && cd ..
       && pip install -r requirements.txt
- 
+
     startCommand: "python3 src/server.py"
- 
+
     # Render uses this to confirm the app actually started.
     # If /api/market-status doesn't return 200, Render marks deploy as failed.
     healthCheckPath: /api/market-status
- 
+
     envVars:
       - key: PORT
         value: 8080
- 
+      - key: PYTHON_VERSION
+        value: "3.11.0"
+
       # Removed: KV_REST_API_URL and KV_REST_API_TOKEN
       # Vercel KV is no longer used. Cache is now in-memory (src/server.py).
       # Keeping dead env vars here just causes confusion.

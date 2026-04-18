@@ -23,7 +23,7 @@ function MetricCard({ name, price, change, pChange, direction }) {
       onMouseLeave={(e) => e.currentTarget.style.borderColor = '#1A1A2E'}
     >
       <div style={{
-        fontFamily: "'Space Mono', monospace",
+        fontFamily: "var(--font-display)",
         fontSize: 10,
         color: '#8892A0',
         marginBottom: 8,
@@ -33,20 +33,21 @@ function MetricCard({ name, price, change, pChange, direction }) {
         {name}
       </div>
       <div style={{
-        fontFamily: "'Space Mono', monospace",
+        fontFamily: "var(--font-mono)",
         fontSize: 22,
         fontWeight: 700,
         color: '#FFFFFF',
         marginBottom: 6,
       }}>
+        {['NIFTY', 'SENSEX', 'GOLD', 'SILVER', 'BRENT', 'COPPER'].includes(name) ? '₹' : ''}
         <AnimatedValue value={price} />
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 12, color, fontWeight: 700 }}>
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color, fontWeight: 700 }}>
           <AnimatedValue value={change} prefix={`${arrow} ${change >= 0 ? '+' : ''}`} color={color} />
         </span>
         <span style={{
-          fontFamily: "'Space Mono', monospace",
+          fontFamily: "var(--font-mono)",
           fontSize: 11,
           color,
           opacity: 0.8,
@@ -63,7 +64,7 @@ function IrsWidget({ irsData, history }) {
   if (!irsData) {
     return (
       <div style={{ background: '#0D0D1A', border: '1px solid #1A1A2E', borderRadius: 8, padding: 20, textAlign: 'center' }}>
-        <div style={{ color: '#555B66', fontFamily: "'Space Mono', monospace", fontSize: 11 }}>Loading IRS Data...</div>
+        <div style={{ color: '#555B66', fontFamily: "var(--font-mono)", fontSize: 11 }}>Loading IRS Data...</div>
       </div>
     );
   }
@@ -97,7 +98,7 @@ function IrsWidget({ irsData, history }) {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#EF4444' }} />
-          <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: '#8892A0', letterSpacing: '0.1em' }}>
+          <span style={{ fontFamily: "var(--font-display)", fontSize: 10, color: '#8892A0', letterSpacing: '0.1em' }}>
             INDIA RISK SCORE
           </span>
         </div>
@@ -108,14 +109,14 @@ function IrsWidget({ irsData, history }) {
             border: `1px solid ${modeColor}30`,
             padding: '2px 8px',
             borderRadius: 4,
-            fontFamily: "'Space Mono', monospace",
+            fontFamily: "var(--font-mono)",
             fontSize: 11,
             fontWeight: 700,
             marginBottom: 4
           }}>
             {mode}
           </div>
-          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, color: '#555B66' }}>
+          <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: '#555B66' }}>
             {updated_at ? <RelativeTime dateString={updated_at} /> : 'Awaiting data...'}
           </div>
         </div>
@@ -124,10 +125,10 @@ function IrsWidget({ irsData, history }) {
       {/* SCORE + GAUGE */}
       <div style={{ textAlign: 'center', position: 'relative' }}>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 4 }}>
-          <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 42, fontWeight: 700, color: scoreColor }}>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 42, fontWeight: 700, color: scoreColor }}>
             <AnimatedValue value={irs} color={scoreColor} />
           </span>
-          <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 16, color: '#555B66' }}>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 16, color: '#555B66' }}>
             /100
           </span>
         </div>
@@ -146,9 +147,9 @@ function IrsWidget({ irsData, history }) {
               <line x1="100" y1="100" x2="100" y2="30" stroke={scoreColor} strokeWidth="3" strokeLinecap="round" />
               <circle cx="100" cy="100" r="5" fill={scoreColor} />
             </g>
-            <text x="20" y="115" fill="#555B66" fontFamily="Space Mono" fontSize="10" textAnchor="middle">0</text>
-            <text x="100" y="20" fill="#555B66" fontFamily="Space Mono" fontSize="10" textAnchor="middle">50</text>
-            <text x="180" y="115" fill="#555B66" fontFamily="Space Mono" fontSize="10" textAnchor="middle">100</text>
+            <text x="20" y="115" fill="#555B66" fontFamily="var(--font-mono)" fontSize="10" textAnchor="middle">0</text>
+            <text x="100" y="20" fill="#555B66" fontFamily="var(--font-mono)" fontSize="10" textAnchor="middle">50</text>
+            <text x="180" y="115" fill="#555B66" fontFamily="var(--font-mono)" fontSize="10" textAnchor="middle">100</text>
           </svg>
         </div>
       </div>
@@ -156,8 +157,8 @@ function IrsWidget({ irsData, history }) {
       {/* 24H HISTORY SPARKLINE */}
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-          <span style={{ fontFamily: "Arial, sans-serif", fontSize: 10, color: '#8892A0' }}>24H HISTORY</span>
-          <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, color: '#555B66' }}>{history.length} readings</span>
+          <span style={{ fontFamily: "var(--font-body)", fontSize: 10, color: '#8892A0' }}>24H HISTORY</span>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: '#555B66' }}>{history.length} readings</span>
         </div>
         <div style={{ height: 60 }}>
           <ResponsiveContainer width="100%" height="100%">
@@ -170,13 +171,13 @@ function IrsWidget({ irsData, history }) {
 
       {/* CONTRIBUTING FACTORS */}
       <div>
-        <div style={{ fontFamily: "Arial, sans-serif", fontSize: 10, color: '#8892A0', marginBottom: 8 }}>CONTRIBUTING FACTORS</div>
+        <div style={{ fontFamily: "var(--font-body)", fontSize: 10, color: '#8892A0', marginBottom: 8 }}>CONTRIBUTING FACTORS</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {factors && Object.entries(factors).map(([k, v]) => {
             const barColor = getZoneColor(v.score);
             return (
               <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontFamily: "Arial, sans-serif", fontSize: 10, color: '#CCC', width: 120 }}>
+                <span style={{ fontFamily: "var(--font-body)", fontSize: 10, color: '#CCC', width: 120 }}>
                   {v.label}
                 </span>
                 <div style={{ flex: 1, height: 4, background: '#1A1A2E', borderRadius: 2, overflow: 'hidden' }}>
@@ -187,7 +188,7 @@ function IrsWidget({ irsData, history }) {
                     transition: 'width 0.6s ease'
                   }} />
                 </div>
-                <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: barColor, width: 30, textAlign: 'right' }}>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: barColor, width: 30, textAlign: 'right' }}>
                   <AnimatedValue value={v.score} color={barColor} />
                 </span>
               </div>
@@ -198,25 +199,25 @@ function IrsWidget({ irsData, history }) {
 
       {/* TOP RISK DRIVERS */}
       <div>
-        <div style={{ fontFamily: "Arial, sans-serif", fontSize: 10, color: '#8892A0', marginBottom: 8 }}>TOP RISK DRIVERS</div>
+        <div style={{ fontFamily: "var(--font-body)", fontSize: 10, color: '#8892A0', marginBottom: 8 }}>TOP RISK DRIVERS</div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           {(top_risk_drivers || []).slice(0, 3).map((item, i) => (
             <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
               <span style={{ color: '#EF4444', fontSize: 12 }}>⚠</span>
-              <span style={{ fontFamily: "Arial, sans-serif", fontSize: 11, color: '#CCC', lineHeight: 1.3 }}>
+              <span style={{ fontFamily: "var(--font-body)", fontSize: 11, color: '#CCC', lineHeight: 1.3 }}>
                 {item.headline.length > 60 ? item.headline.substring(0, 60) + '...' : item.headline}
               </span>
             </div>
           ))}
           {(!top_risk_drivers || top_risk_drivers.length === 0) && (
-            <span style={{ fontFamily: "Arial, sans-serif", fontSize: 11, color: '#555B66' }}>No active danger signals.</span>
+            <span style={{ fontFamily: "var(--font-body)", fontSize: 11, color: '#555B66' }}>No active danger signals.</span>
           )}
         </div>
       </div>
 
       {/* GRADIENT BAR */}
       <div style={{ marginTop: 8 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontFamily: "'Space Mono', monospace", fontSize: 9, color: '#8892A0' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontFamily: "var(--font-mono)", fontSize: 9, color: '#8892A0' }}>
           <span>LOW RISK</span>
           <span>MODERATE</span>
           <span>ELEVATED</span>
@@ -236,7 +237,7 @@ function IrsWidget({ irsData, history }) {
             transition: 'left 0.6s ease'
           }} />
         </div>
-        <div style={{ textAlign: 'center', marginTop: 12, fontFamily: "'Space Mono', monospace", fontSize: 10, color: '#8892A0' }}>
+        <div style={{ textAlign: 'center', marginTop: 12, fontFamily: "var(--font-mono)", fontSize: 10, color: '#8892A0' }}>
           IRS {irs}/100 — <span style={{ color: modeColor }}>{mode} ACTIVE</span>
         </div>
       </div>
@@ -249,10 +250,10 @@ function SectorHeatmap({ sectors }) {
   if (!sectors || sectors.length === 0) {
     return (
       <div style={{ background: '#0D0D1A', border: '1px solid #1A1A2E', borderRadius: 8, padding: 20 }}>
-        <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: '#8892A0', letterSpacing: '0.15em', marginBottom: 12 }}>
+        <div style={{ fontFamily: "var(--font-display)", fontSize: 10, color: '#8892A0', letterSpacing: '0.15em', marginBottom: 12 }}>
           SECTOR HEATMAP
         </div>
-        <div style={{ color: '#555B66', fontFamily: "'Space Mono', monospace", fontSize: 11 }}>Loading...</div>
+        <div style={{ color: '#555B66', fontFamily: "var(--font-mono)", fontSize: 11 }}>Loading...</div>
       </div>
     );
   }
@@ -268,7 +269,7 @@ function SectorHeatmap({ sectors }) {
 
   return (
     <div style={{ background: '#0D0D1A', border: '1px solid #1A1A2E', borderRadius: 8, padding: 20 }}>
-      <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: '#8892A0', letterSpacing: '0.15em', marginBottom: 12 }}>
+      <div style={{ fontFamily: "var(--font-display)", fontSize: 10, color: '#8892A0', letterSpacing: '0.15em', marginBottom: 12 }}>
         SECTOR HEATMAP
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
@@ -285,16 +286,16 @@ function SectorHeatmap({ sectors }) {
               alignItems: 'center',
             }}
           >
-            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: '#CCC' }}>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: '#CCC' }}>
               {s.name}
             </span>
             <span style={{
-              fontFamily: "'Space Mono', monospace",
+              fontFamily: "var(--font-mono)",
               fontSize: 11,
               fontWeight: 700,
               color: getColor(s.pChange),
             }}>
-              {s.pChange >= 0 ? '+' : ''}{s.pChange.toFixed(2)}%
+              {s.pChange != null ? (s.pChange >= 0 ? '+' : '') + s.pChange.toFixed(2) : '0.00'}%
             </span>
           </div>
         ))}
@@ -319,16 +320,21 @@ function NewsTicker({ news }) {
   return (
     <div style={{
       width: '100%',
-      background: '#0A0A12',
+      background: '#0A0A12CC',
+      backdropFilter: 'blur(8px)',
       borderTop: '1px solid #1A1A2E',
       overflow: 'hidden',
-      padding: '8px 0',
+      padding: '10px 0',
+      position: 'fixed',
+      bottom: 0,
+      left: 0,
+      zIndex: 1000,
     }}>
       <div className="marquee-content" style={{ animationDuration: `${duration}s` }}>
         {items.map((item, i) => (
           <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginRight: 40 }}>
             <span style={{
-              fontFamily: "'Space Mono', monospace",
+              fontFamily: "var(--font-mono)",
               fontSize: 9,
               color: '#555B66',
               padding: '1px 4px',
@@ -338,7 +344,7 @@ function NewsTicker({ news }) {
               {item.source}
             </span>
             <span style={{
-              fontFamily: "Arial, sans-serif",
+              fontFamily: "var(--font-body)",
               fontSize: 12,
               color: biasColor(item.bias),
             }}>
@@ -383,8 +389,18 @@ export default function Pulse({ liveData }) {
 
       if (sig) setSignals(sig);
       if (fii) setFiiDii(fii);
-      if (sec?.data) setSectors(sec.data);
-      if (newsData?.items) setNews(newsData.items);
+      
+      // Handle potential structures for sectors ({data:[]} or [])
+      if (sec) {
+        if (sec.data) setSectors(sec.data);
+        else if (Array.isArray(sec)) setSectors(sec);
+      }
+      
+      // Handle potential structures for news ({items:[]} or [])
+      if (newsData) {
+        if (newsData.items) setNews(newsData.items);
+        else if (Array.isArray(newsData)) setNews(newsData);
+      }
       
       if (irsResp) {
         setIrsData(irsResp);
@@ -497,6 +513,7 @@ export default function Pulse({ liveData }) {
         gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
         gap: 12,
         marginBottom: 24,
+        paddingBottom: 60, // Space for fixed ticker
       }}>
         {cards.map((c) => {
           const d = market[c.key];
@@ -507,7 +524,7 @@ export default function Pulse({ liveData }) {
               price={d?.price}
               change={d?.change}
               pChange={d?.pChange}
-              direction={d?.direction}
+              direction={d?.direction || (d?.change >= 0 ? 'up' : 'down')}
             />
           );
         })}
@@ -529,7 +546,7 @@ export default function Pulse({ liveData }) {
           padding: 20,
         }}>
           <div style={{
-            fontFamily: "'Space Mono', monospace",
+            fontFamily: "var(--font-display)",
             fontSize: 10,
             color: '#8892A0',
             letterSpacing: '0.15em',
@@ -541,9 +558,9 @@ export default function Pulse({ liveData }) {
           {fiiDii ? (
             <>
               <div style={{ marginBottom: 12 }}>
-                <div style={{ fontFamily: "Arial, sans-serif", fontSize: 11, color: '#8892A0', marginBottom: 4 }}>FII Net</div>
+                <div style={{ fontFamily: "var(--font-body)", fontSize: 11, color: '#8892A0', marginBottom: 4 }}>FII Net</div>
                 <div style={{
-                  fontFamily: "'Space Mono', monospace",
+                  fontFamily: "var(--font-mono)",
                   fontSize: 20,
                   fontWeight: 700,
                   color: fiiNet != null ? (fiiNet >= 0 ? '#00FF88' : '#FF4444') : '#555B66',
@@ -552,9 +569,9 @@ export default function Pulse({ liveData }) {
                 </div>
               </div>
               <div style={{ marginBottom: 12 }}>
-                <div style={{ fontFamily: "Arial, sans-serif", fontSize: 11, color: '#8892A0', marginBottom: 4 }}>DII Net</div>
+                <div style={{ fontFamily: "var(--font-body)", fontSize: 11, color: '#8892A0', marginBottom: 4 }}>DII Net</div>
                 <div style={{
-                  fontFamily: "'Space Mono', monospace",
+                  fontFamily: "var(--font-mono)",
                   fontSize: 20,
                   fontWeight: 700,
                   color: diiNet != null ? (diiNet >= 0 ? '#00FF88' : '#FF4444') : '#555B66',
@@ -563,7 +580,7 @@ export default function Pulse({ liveData }) {
                 </div>
               </div>
               <div style={{
-                fontFamily: "'Space Mono', monospace",
+                fontFamily: "var(--font-mono)",
                 fontSize: 12,
                 fontWeight: 700,
                 color: fiiSignalColor,
@@ -576,18 +593,22 @@ export default function Pulse({ liveData }) {
                 {fiiSignal}
               </div>
               {fiiDii?.date && fiiDii.date !== 'Unavailable' && (
-                <div style={{ fontFamily: "Arial, sans-serif", fontSize: 10, color: '#555B66', marginTop: 8 }}>
+                <div style={{ fontFamily: "var(--font-body)", fontSize: 10, color: '#555B66', marginTop: 8 }}>
                   Data: {fiiDii.date}
                 </div>
               )}
-              {fiiDii?.unavailable && (
-                <div style={{ fontFamily: "Arial, sans-serif", fontSize: 10, color: '#FF8C00', marginTop: 8 }}>
+              {fiiDii?.note === 'Volume proxy' ? (
+                <div style={{ fontFamily: "var(--font-body)", fontSize: 10, color: '#FFB347', marginTop: 4 }}>
+                  Institutional proxy (volume-derived) — real FII data unavailable from cloud
+                </div>
+              ) : fiiDii?.unavailable ? (
+                <div style={{ fontFamily: "var(--font-body)", fontSize: 10, color: '#FF8C00', marginTop: 8 }}>
                   NSE API unavailable — check back later
                 </div>
-              )}
+              ) : null}
             </>
           ) : (
-            <div style={{ color: '#555B66', fontFamily: "'Space Mono', monospace", fontSize: 11 }}>Loading...</div>
+            <div style={{ color: '#555B66', fontFamily: "var(--font-mono)", fontSize: 11 }}>Loading...</div>
           )}
         </div>
 

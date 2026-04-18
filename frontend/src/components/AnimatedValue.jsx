@@ -25,12 +25,12 @@ export default function AnimatedValue({ value, prefix = '', suffix = '', color =
         const progress = Math.min(elapsed / duration, 1);
         // Ease out quad
         const easeProgress = progress * (2 - progress);
-        const currentVal = startValue + (endValue - startValue) * easeProgress;
-        
-        setDisplayValue(isFloat ? currentVal.toFixed(2) : Math.round(currentVal));
+        const validCurrent = typeof currentVal === 'number' && !isNaN(currentVal) ? currentVal : 0;
+        setDisplayValue(isFloat ? validCurrent.toFixed(2) : Math.round(validCurrent));
         requestAnimationFrame(animate);
       } else {
-        setDisplayValue(isFloat ? parseFloat(endValue).toFixed(2) : endValue);
+        const validEnd = typeof endValue === 'number' && !isNaN(endValue) ? endValue : (parseFloat(endValue) || 0);
+        setDisplayValue(isFloat ? Number(validEnd).toFixed(2) : endValue);
       }
     };
 

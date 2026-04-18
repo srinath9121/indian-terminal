@@ -1,9 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { safeFetch } from './utils/api';
 import Pulse from './pages/Pulse.jsx';
 import GeoMap from './pages/GeoMap.jsx';
 import Markets from './pages/Markets.jsx';
+import Commodities from './pages/Commodities.jsx';
+import Signals from './pages/Signals.jsx';
+import Risk from './pages/Risk.jsx';
 
-const TABS = ['PULSE', 'GEO MAP', 'MARKETS'];
+const TABS = ['PULSE', 'GEO MAP', 'MARKETS', 'COMMODITIES', 'SIGNALS', 'RISK'];
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('PULSE');
@@ -90,19 +94,26 @@ export default function App() {
   // ────── GTI BADGE (fetch independently) ──────
   useEffect(() => {
     const fetchGti = async () => {
-      try {
-        const resp = await fetch('/api/gdelt/india-events');
-        if (resp.ok) {
-          const data = await resp.json();
-          setGtiValue(data.gti);
-          setGtiLabel(data.gti_label);
-        }
-      } catch {
-        // Endpoint may not exist yet
+      const data = await safeFetch('/api/gdelt/india-events');
+      if (data) {
+        setGtiValue(data.gti);
+        if (data.gti_label) setGtiLabel(data.gti_label);
       }
     };
     fetchGti();
-    const id = setInterval(fetchGti, 15 * 60 * 1000);
+    const id = setInterval(fetchGti, 120000); // 2 minutes
+    return () => clearInterval(id);
+  }, []);
+
+  // ────── COMMODITY DATA (Centralized) ──────
+  const [commodityData, setCommodityData] = useState(null);
+  useEffect(() => {
+    const fetchComms = async () => {
+      const res = await safeFetch('/api/commodities');
+      if (res && res.commodities) setCommodityData(res.commodities);
+    };
+    fetchComms();
+    const id = setInterval(fetchComms, 300000); // 5 minutes
     return () => clearInterval(id);
   }, []);
 
@@ -149,7 +160,7 @@ export default function App() {
       zIndex: 1000,
     },
     logo: {
-      fontFamily: "'Space Mono', monospace",
+      fontFamily: "var(--font-display)",
       fontSize: 14,
       color: '#00D4FF',
       fontWeight: 700,
@@ -162,7 +173,7 @@ export default function App() {
       gap: 0,
     },
     tab: (isActive) => ({
-      fontFamily: "'Space Mono', monospace",
+      fontFamily: "var(--font-display)",
       fontSize: 11,
       fontWeight: 700,
       padding: '6px 18px',
@@ -185,19 +196,19 @@ export default function App() {
       gap: 6,
     },
     wsText: {
-      fontFamily: "'Space Mono', monospace",
+      fontFamily: "var(--font-mono)",
       fontSize: 10,
       color: wsStatus === 'LIVE' ? '#00FF88' : '#FF8C00',
       fontWeight: 700,
     },
     clockText: {
-      fontFamily: "'Space Mono', monospace",
+      fontFamily: "var(--font-mono)",
       fontSize: 12,
       color: '#8892A0',
       fontWeight: 400,
     },
     gtiBadge: {
-      fontFamily: "'Space Mono', monospace",
+      fontFamily: "var(--font-mono)",
       fontSize: 10,
       fontWeight: 700,
       padding: '2px 8px',
@@ -275,8 +286,11 @@ export default function App() {
         {showScanline && <div style={styles.scanlineOverlay} />}
         <div className="fade-in" key={activeTab}>
           {activeTab === 'PULSE' && <Pulse liveData={liveData} />}
-          {activeTab === 'GEO MAP' && <GeoMap />}
+          {activeTab === 'GEO MAP' && <GeoMap commodityData={commodityData} />}
           {activeTab === 'MARKETS' && <Markets />}
+          {activeTab === 'COMMODITIES' && <Commodities commodityData={commodityData} />}
+          {activeTab === 'SIGNALS' && <Signals />}
+          {activeTab === 'RISK' && <Risk />}
         </div>
       </div>
     </div>

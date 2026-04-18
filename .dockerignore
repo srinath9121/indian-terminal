@@ -1,0 +1,11 @@
+.git
+.agents
+frontend/node_modules
+**/__pycache__
+**/*.pyc
+.env
+Dockerfile
+render.yaml
+railway.json
+nixpacks.toml
+Procfile

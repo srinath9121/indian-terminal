@@ -17,7 +17,8 @@ from pathlib import Path
 import yfinance as yf
 import feedparser
 import pytz
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query, FileResponse
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import httpx
@@ -295,7 +296,8 @@ ws_clients = set()
 
 async def ws_broadcast_loop():
     while True:
-        await asyncio.sleep(60 if market_status()["is_open"] else 300)
+        # 150s refresh to avoid yfinance rate limits
+        await asyncio.sleep(150)
         data = await get_live_data()
         msg = json.dumps({"type": "price_update", "data": data})
         for ws in list(ws_clients):

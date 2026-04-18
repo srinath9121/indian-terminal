@@ -199,12 +199,17 @@ async def api_rbi(): return {"repo_rate": 6.5, "cpi_inflation": 5.1, "timestamp"
 
 # Serve Frontend SPA
 DIST_DIR = BASE_DIR / "frontend" / "dist"
+logger.info(f"Probing frontend: {DIST_DIR} (exists: {DIST_DIR.exists()})")
 if DIST_DIR.exists():
     app.mount("/assets", StaticFiles(directory=DIST_DIR / "assets"), name="assets")
     @app.get("/{full_path:path}")
     async def serve_spa(full_path: str):
         if full_path.startswith("api/"): return {"error": "Not Found"}
         return FileResponse(DIST_DIR / "index.html")
+else:
+    @app.get("/")
+    async def root_fallback():
+        return {"status": "Live", "sync": GLOBAL_STATE["last_sync"], "msg": f"UI not found at {DIST_DIR}"}
 
 # Websocket
 ws_clients = set()

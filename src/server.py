@@ -13,7 +13,7 @@ from pathlib import Path
 
 import yfinance as yf
 import pytz
-from nse_fetcher import NSEMoversFetcher
+from src.nse_fetcher import NSEMoversFetcher
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware

@@ -246,39 +246,47 @@ async def get_commodities_data():
     return res
 
 async def get_live_data():
-    loop = asyncio.get_event_loop()
-    try: m = await loop.run_in_executor(None, _fetch_market_sync)
-    except: m = {}
-
-    # PULSE ENRICHMENT (HARDENED)
     try:
-        c_data = await get_commodities_data()
-        if c_data and "commodities" in c_data:
-            for item in c_data["commodities"]:
-                key = item['id'].upper()
-                if key in ['GOLD', 'SILVER', 'COPPER']:
-                    m[key] = {
-                        "price": item['inr_price'], 
-                        "change": item['inr_change'], 
-                        "pChange": item['pct_change'],
-                        "direction": item['direction'], 
-                        "is_up": item['direction'] == 'up'
-                    }
-    except: pass
+        loop = asyncio.get_event_loop()
+        try: m = await loop.run_in_executor(None, _fetch_market_sync)
+        except: m = {}
 
-    # IRS ENRICHMENT
-    irs_val = 45.0
-    try:
-        irs_entry = get_cached("irs")
-        if irs_entry: irs_val = irs_entry.get("irs", 45.0)
-    except: pass
+        # PULSE ENRICHMENT (HARDENED)
+        try:
+            c_data = await get_commodities_data()
+            if c_data and "commodities" in c_data:
+                for item in c_data["commodities"]:
+                    key = item['id'].upper()
+                    if key in ['GOLD', 'SILVER', 'COPPER']:
+                        m[key] = {
+                            "price": item['inr_price'], 
+                            "change": item['inr_change'], 
+                            "pChange": item['pct_change'],
+                            "direction": item['direction'], 
+                            "is_up": item['direction'] == 'up'
+                        }
+        except: pass
 
-    # SIGNAL FOR DASHBOARD
-    signal = {"direction": "NEUTRAL", "level": "MODERATE", "confidence": "0.85", "reasoning": "Standard macro equilibrium"}
-    if irs_val >= 60: signal = {"direction": "SHORT / HEDGED", "level": "HIGH", "confidence": "0.92", "reasoning": "Elevated geopolitical stress"}
-    elif irs_val < 35: signal = {"direction": "LONG / AGGRESSIVE", "level": "LOW", "confidence": "0.88", "reasoning": "Stable macro tailwinds"}
+        # IRS ENRICHMENT
+        irs_val = 45.0
+        try:
+            irs_entry = get_cached("irs")
+            if irs_entry: irs_val = irs_entry.get("irs", 45.0)
+        except: pass
 
-    return {"timestamp": datetime.now(IST).isoformat(), "MARKET": m, "status": market_status(), "irs": irs_val, "SIGNAL": signal}
+        # SIGNAL FOR DASHBOARD
+        signal = {"direction": "NEUTRAL", "level": "MODERATE", "confidence": "0.85", "reasoning": "Standard macro equilibrium"}
+        if irs_val >= 60: signal = {"direction": "SHORT / HEDGED", "level": "HIGH", "confidence": "0.92", "reasoning": "Elevated geopolitical stress"}
+        elif irs_val < 35: signal = {"direction": "LONG / AGGRESSIVE", "level": "LOW", "confidence": "0.88", "reasoning": "Stable macro tailwinds"}
+
+        return {"timestamp": datetime.now(IST).isoformat(), "MARKET": m, "status": market_status(), "irs": irs_val, "SIGNAL": signal}
+    except Exception as e:
+        logger.error(f"FATAL get_live_data: {e}")
+        return {"timestamp": datetime.now(IST).isoformat(), "MARKET": {}, "status": market_status(), "irs": 50, "SIGNAL": {"direction": "ERR", "level": "N/A"}}
+
+@app.get("/api/market-status")
+async def api_market_status():
+    return market_status()
 
 # ─────────────────────────────────────────────────────
 # WEBSOCKET

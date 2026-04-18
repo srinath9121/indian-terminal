@@ -9,7 +9,7 @@ services:
       cd frontend && npm install && npm run build && cd ..
       && pip install -r requirements.txt
 
-    startCommand: "python3 src/server.py"
+    startCommand: "uvicorn src.server:app --host 0.0.0.0 --port $PORT"
 
     # Render uses this to confirm the app actually started.
     # If /api/market-status doesn't return 200, Render marks deploy as failed.

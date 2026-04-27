@@ -1,0 +1,252 @@
+{
+  "terminal": "India Macro Intelligence Terminal",
+  "version": "1.0",
+  "timestamp": "2026-04-04 11:26:33",
+  "BRENT_DATA": {
+    "brent_price": 109.03,
+    "brent_change_pct": 7.7797,
+    "data_source": "Brent Crude (BZ=F)",
+    "delay_minutes": 15
+  },
+  "SIGNAL": {
+    "direction": "BEARISH",
+    "level": "STRONG",
+    "confidence": "92%",
+    "summary": "Market bias BEARISH (STRONG) with 92% confidence",
+    "imsi_breakdown": "IMSI: 74.9 \u2014 Oil: 100 | Rupee: 100 | FII: 30 | Geo: 100 | VIX: 25"
+  },
+  "INDICES": {
+    "IMSI": {
+      "score": 74.9,
+      "label": "IMSI",
+      "name": "India Macro Stress Index"
+    },
+    "OIL": {
+      "score": 100,
+      "label": "OIL",
+      "name": "Oil Pressure"
+    },
+    "CUR": {
+      "score": 100,
+      "label": "INR",
+      "name": "Currency Pressure"
+    },
+    "FII": {
+      "score": 30,
+      "label": "FII",
+      "name": "Flow Pressure"
+    },
+    "GEO": {
+      "score": 100,
+      "label": "GEO",
+      "name": "Geopolitcal Risk"
+    },
+    "VIX": {
+      "score": 25,
+      "label": "VIX",
+      "name": "Volatility Stress"
+    },
+    "CMD": {
+      "score": 27.5,
+      "label": "CMD",
+      "name": "Commodity Press (Ex-Oil)"
+    },
+    "COMPOSITE": {
+      "score": 74.9,
+      "label": "COMP",
+      "name": "Overall Stress"
+    }
+  },
+  "MARKET": {
+    "NIFTY": {
+      "price": 22713.1,
+      "change": "+0.15%",
+      "direction": "up"
+    },
+    "SENSEX": {
+      "price": 73319.55,
+      "change": "+0.25%",
+      "direction": "up"
+    },
+    "BANKNIFTY": {
+      "price": 51548.75,
+      "change": "+0.19%",
+      "direction": "up"
+    },
+    "NIFTY IT": {
+      "price": 30441.45,
+      "change": "+2.60%",
+      "direction": "up"
+    },
+    "CRUDE": {
+      "price": 111.54,
+      "change": "+11.41%",
+      "direction": "up"
+    },
+    "BRENT_CRUDE": {
+      "price": 109.03,
+      "change": "+7.78%",
+      "direction": "up"
+    },
+    "GOLD": {
+      "price": 4651.5,
+      "change": "-2.75%",
+      "direction": "down"
+    },
+    "USD/INR": {
+      "price": 92.67,
+      "change": "-0.33%",
+      "direction": "down"
+    },
+    "INDIAVIX": {
+      "price": 25.52,
+      "change": "+2.04%",
+      "direction": "up"
+    }
+  },
+  "TOP_MOVERS": {
+    "gainers": [
+      {
+        "name": "Infosys",
+        "change": 1.9675549593925055
+      },
+      {
+        "name": "HDFC Bank",
+        "change": 1.16537883651903
+      }
+    ],
+    "losers": [
+      {
+        "name": "Sun Pharma",
+        "change": -2.019093110446196
+      },
+      {
+        "name": "Asian Paints",
+        "change": -2.5518935925098036
+      }
+    ]
+  },
+  "MACRO_SECTORS": [
+    {
+      "icon": "\ud83d\udee2\ufe0f",
+      "title": "Oil Spike",
+      "change": "+7.8%",
+      "reason": "Fuel & raw material costs rising",
+      "sectors": [
+        {
+          "name": "Airlines",
+          "direction": "down",
+          "impact": "HIGH"
+        },
+        {
+          "name": "Paint",
+          "direction": "down",
+          "impact": "HIGH"
+        }
+      ]
+    },
+    {
+      "icon": "\ud83d\udcb1",
+      "title": "Rupee Weakness",
+      "change": "\u20b993.25",
+      "reason": "Export competitiveness improves",
+      "sectors": [
+        {
+          "name": "IT",
+          "direction": "up",
+          "impact": "MEDIUM"
+        },
+        {
+          "name": "Pharma",
+          "direction": "up",
+          "impact": "MEDIUM"
+        }
+      ]
+    },
+    {
+      "icon": "\ud83c\udfe6",
+      "title": "Interest Rates",
+      "change": "6.25%",
+      "reason": "Banks earn more, loans expensive",
+      "sectors": [
+        {
+          "name": "Banks",
+          "direction": "up",
+          "impact": "HIGH"
+        },
+        {
+          "name": "Real Estate",
+          "direction": "down",
+          "impact": "HIGH"
+        }
+      ]
+    }
+  ],
+  "FII_DII": {
+    "fii_net": -12847.0,
+    "dii_net": 9240.0,
+    "period": "Mar 2026",
+    "timestamp": "2026-04-04 11:26:33.891046"
+  },
+  "RBI": {
+    "repo_rate": 6.25,
+    "cpi_latest": 4.8,
+    "cpi_target": 4.0,
+    "next_mpc": "Apr 15, 2026"
+  },
+  "DRIVERS": [
+    "High composite stress index (74.9)",
+    "Oil price surge (+7.8%)",
+    "Rupee weakness (USD/INR: 93.25)",
+    "Multiple geopolitical risk events (10)"
+  ],
+  "RISK_FACTORS": [
+    "High composite stress index (74.9)",
+    "Oil price surge (+7.8%)",
+    "Rupee weakness (USD/INR: 93.25)"
+  ],
+  "NEWS": [
+    {
+      "headline": "Global markets at an inflexion point: Q2 could reward patience over prediction",
+      "source": "ET_Markets",
+      "category": "geopolitical_high",
+      "bias": "bearish",
+      "link": "https://economictimes.indiatimes.com/markets/us-stocks/news/global-markets-at-an-inflexion-point-q2-could-reward-patience-over-prediction/articleshow/130013139.cms"
+    },
+    {
+      "headline": "Wall Street Week Ahead: Inflation in focus for markets jostled by Middle East wa",
+      "source": "ET_Markets",
+      "category": "geopolitical_high",
+      "bias": "bearish",
+      "link": "https://economictimes.indiatimes.com/markets/us-stocks/news/wall-street-week-ahead-inflation-in-focus-for-markets-jostled-by-middle-east-war-signals/articleshow/130012703.cms"
+    },
+    {
+      "headline": "Stock markets decline 2% in early trade amid rising tensions in West Asia, surge",
+      "source": "Hindu_Business",
+      "category": "oil_risk",
+      "bias": "bearish",
+      "link": "https://www.thehindu.com/business/markets/sensex-and-nifty-stock-markets-today-amid-rising-tensions-in-west-asia-surge-in-crude-oil-price/article70814278.ece"
+    },
+    {
+      "headline": "Commercial LPG prices hiked 10%, jet fuel rates up 9% for domestic airlines",
+      "source": "Hindu_Business",
+      "category": "oil_risk",
+      "bias": "neutral",
+      "link": "https://www.thehindu.com/news/national/jet-fuel-prices-rise-doubled-commercial-lpg-price-increased/article70809777.ece"
+    },
+    {
+      "headline": "Mid-day Mood | Cooling volatility sparks market rally, India VIX sees steepest f",
+      "source": "Moneycontrol",
+      "category": "geopolitical_high",
+      "bias": "bearish",
+      "link": "https://www.moneycontrol.com/news/local-markets/mid-day-mood-|-cooling-volatility-sparks-market-rally-india-vix-sees-steepest-fall4-years_17531481.html"
+    }
+  ],
+  "META": {
+    "news_articles_processed": 24,
+    "bearish_news_count": 11,
+    "bullish_news_count": 1,
+    "geo_risk_events": 10,
+    "data_quality_note": "RSS=live | yfinance=~15min delay | FII=proxy"
+  }
+}

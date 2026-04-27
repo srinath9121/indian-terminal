@@ -1,13 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { safeFetch } from './utils/api';
 import Pulse from './pages/Pulse.jsx';
+import Macro from './pages/Macro.jsx';
 import GeoMap from './pages/GeoMap.jsx';
 import Markets from './pages/Markets.jsx';
 import Commodities from './pages/Commodities.jsx';
-import Signals from './pages/Signals.jsx';
-import Risk from './pages/Risk.jsx';
 
-const TABS = ['PULSE', 'GEO MAP', 'MARKETS', 'COMMODITIES', 'SIGNALS', 'RISK'];
+const TABS = ['PULSE', 'MACRO', 'GEO MAP', 'MARKETS', 'COMMODITIES'];
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('PULSE');
@@ -128,12 +127,20 @@ export default function App() {
   };
 
   // ────── GTI BADGE COLOR ──────
+  // GTI badge colors per design doc
   const getGtiColor = (val) => {
-    if (val == null) return '#555B66';
-    if (val >= 80) return '#FF4444';
-    if (val >= 60) return '#FF8C00';
-    if (val >= 35) return '#3B82F6';
-    return '#00FF88';
+    if (val == null) return '#6B7280';
+    if (val >= 80) return '#EF4444';
+    if (val >= 60) return '#F97316';
+    if (val >= 35) return '#EAB308';
+    return '#22C55E';
+  };
+  const getGtiBg = (val) => {
+    if (val == null) return 'transparent';
+    if (val >= 80) return '#7F1D1D';
+    if (val >= 60) return '#7C2D12';
+    if (val >= 35) return '#713F12';
+    return '#14532D';
   };
 
   // ────── STYLES ──────
@@ -160,11 +167,11 @@ export default function App() {
       zIndex: 1000,
     },
     logo: {
-      fontFamily: "var(--font-display)",
+      fontFamily: "'Space Mono', monospace",
       fontSize: 14,
-      color: '#00D4FF',
+      color: '#FFFFFF',
       fontWeight: 700,
-      letterSpacing: '0.05em',
+      letterSpacing: '0.02em',
       cursor: 'pointer',
       userSelect: 'none',
     },
@@ -208,14 +215,13 @@ export default function App() {
       fontWeight: 400,
     },
     gtiBadge: {
-      fontFamily: "var(--font-mono)",
+      fontFamily: "'Space Mono', monospace",
       fontSize: 10,
       fontWeight: 700,
       padding: '2px 8px',
       borderRadius: 4,
       color: getGtiColor(gtiValue),
-      border: `1px solid ${getGtiColor(gtiValue)}40`,
-      background: `${getGtiColor(gtiValue)}15`,
+      background: getGtiBg(gtiValue),
     },
     content: {
       flex: 1,
@@ -286,13 +292,20 @@ export default function App() {
         {showScanline && <div style={styles.scanlineOverlay} />}
         <div className="fade-in" key={activeTab}>
           {activeTab === 'PULSE' && <Pulse liveData={liveData} />}
+          {activeTab === 'MACRO' && <Macro />}
           {activeTab === 'GEO MAP' && <GeoMap commodityData={commodityData} />}
           {activeTab === 'MARKETS' && <Markets />}
           {activeTab === 'COMMODITIES' && <Commodities commodityData={commodityData} />}
-          {activeTab === 'SIGNALS' && <Signals />}
-          {activeTab === 'RISK' && <Risk />}
         </div>
       </div>
+
+      {/* ────── GLOBAL DISCLAIMER ────── */}
+      <div style={{ background: '#0D1525', borderTop: '1px solid #1E293B', padding: '10px 20px', textAlign: 'center', marginTop: 'auto' }}>
+        <span style={{ fontSize: 10, fontWeight: 500, color: '#38BDF8', fontFamily: "'Inter', sans-serif" }}>
+          MACRO TERMINAL: Commodity prices sourced from CMX/ICE/NYM via yfinance with INR parity conversion. NOT sourced from MCX directly. 15-minute price delay. For informational purposes only.
+        </span>
+      </div>
+
     </div>
   );
 }

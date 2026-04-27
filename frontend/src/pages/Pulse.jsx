@@ -1,301 +1,344 @@
 import { useState, useEffect, useRef } from 'react';
-import { AreaChart, Area, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, ResponsiveContainer } from 'recharts';
 import AnimatedValue from '../components/AnimatedValue';
-import RelativeTime from '../components/RelativeTime';
+
+// ────── SPARKLINE SUB-COMPONENT ──────
+function MiniSparkline({ data, color }) {
+  if (!data || data.length < 2) return null;
+  const chartData = data.map((v, i) => ({ v, i }));
+  return (
+    <div style={{ width: 120, height: 40 }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={chartData}>
+          <Line type="monotone" dataKey="v" stroke={color} strokeWidth={1.5} dot={false} isAnimationActive={false} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
 
 // ────── METRIC CARD COMPONENT ──────
-function MetricCard({ name, price, change, pChange, direction }) {
-  const isUp = direction === 'up';
+function MetricCard({ name, price, change, pChange, isUp, sparkline, isLive, flash }) {
+  const color = isUp ? '#22C55E' : '#EF4444';
   const arrow = isUp ? '▲' : '▼';
-  const color = isUp ? '#00FF88' : '#FF4444';
+  const sparkColor = isUp ? '#22C55E' : '#EF4444';
 
   return (
     <div
       style={{
         background: '#0D0D1A',
-        border: '1px solid #1A1A2E',
-        borderRadius: 8,
-        padding: '16px 20px',
+        border: `1px solid ${flash ? '#00D4FF' : '#1A1A2E'}`,
+        borderRadius: 4,
+        padding: '14px 16px',
         minWidth: 0,
-        transition: 'border-color 0.3s',
+        transition: 'border-color 0.8s ease',
       }}
-      onMouseEnter={(e) => e.currentTarget.style.borderColor = '#1A1A4E'}
-      onMouseLeave={(e) => e.currentTarget.style.borderColor = '#1A1A2E'}
     >
-      <div style={{
-        fontFamily: "var(--font-display)",
-        fontSize: 10,
-        color: '#8892A0',
-        marginBottom: 8,
-        letterSpacing: '0.1em',
-        textTransform: 'uppercase',
-      }}>
-        {name}
+      {/* TOP ROW: label + live dot */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+        <span style={{
+          fontFamily: "'Inter', Arial, sans-serif",
+          fontSize: 10,
+          color: '#6B7280',
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+        }}>
+          {name}
+        </span>
+        <div style={{
+          width: 8, height: 8, borderRadius: '50%',
+          background: isLive ? '#00D4FF' : '#374151',
+          boxShadow: isLive ? '0 0 6px #00D4FF' : 'none',
+          animation: isLive ? 'pulse 2s ease-in-out infinite' : 'none',
+        }} />
       </div>
+
+      {/* VALUE */}
       <div style={{
-        fontFamily: "var(--font-mono)",
-        fontSize: 22,
+        fontFamily: "'Space Mono', monospace",
+        fontSize: 28,
         fontWeight: 700,
         color: '#FFFFFF',
         marginBottom: 6,
       }}>
-        {['NIFTY', 'SENSEX', 'GOLD', 'SILVER', 'BRENT', 'COPPER'].includes(name) ? '₹' : ''}
         <AnimatedValue value={price} />
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color, fontWeight: 700 }}>
-          <AnimatedValue value={change} prefix={`${arrow} ${change >= 0 ? '+' : ''}`} color={color} />
+
+      {/* CHANGE + PCT */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+        <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 12, color, fontWeight: 700 }}>
+          {arrow} {change != null ? (change >= 0 ? '+' : '') + Number(change).toFixed(2) : '--'}
         </span>
-        <span style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: 11,
-          color,
-          opacity: 0.8,
-        }}>
-          (<AnimatedValue value={pChange} prefix={pChange >= 0 ? '+' : ''} suffix="%" color={color} />)
+        <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color, opacity: 0.8 }}>
+          ({pChange != null ? (pChange >= 0 ? '+' : '') + Number(pChange).toFixed(2) : '--'}%)
         </span>
       </div>
+
+      {/* SPARKLINE */}
+      <MiniSparkline data={sparkline} color={sparkColor} />
     </div>
   );
 }
 
-// ────── IRS WIDGET COMPONENT ──────
-function IrsWidget({ irsData, history }) {
-  if (!irsData) {
-    return (
-      <div style={{ background: '#0D0D1A', border: '1px solid #1A1A2E', borderRadius: 8, padding: 20, textAlign: 'center' }}>
-        <div style={{ color: '#555B66', fontFamily: "var(--font-mono)", fontSize: 11 }}>Loading IRS Data...</div>
-      </div>
-    );
-  }
+// ────── GTI GAUGE COMPONENT ──────
+function GtiGauge({ score }) {
+  const safeScore = score ?? 0;
 
-  const { irs, mode, zone, factors, top_risk_drivers, updated_at } = irsData;
-
-  const getZoneColor = (val) => {
-    if (val >= 80) return '#EF4444'; // EXTREME
-    if (val >= 60) return '#F97316'; // ELEVATED
-    if (val >= 35) return '#EAB308'; // MODERATE
-    return '#22C55E'; // LOW
+  const getZoneLabel = (val) => {
+    if (val >= 80) return 'CRITICAL';
+    if (val >= 60) return 'ELEVATED';
+    if (val >= 35) return 'MODERATE';
+    return 'LOW';
   };
 
-  const modeColor = mode === 'RISK ON' ? '#22C55E' : mode === 'RISK OFF' ? '#EF4444' : '#F97316';
-  const scoreColor = getZoneColor(irs);
+  const getZoneColor = (val) => {
+    if (val >= 80) return '#EF4444';
+    if (val >= 60) return '#F97316';
+    if (val >= 35) return '#EAB308';
+    return '#16A34A';
+  };
 
-  // Gauge angle logic
-  const angle = ((irs / 100) * 180) - 90;
+  const zoneLabel = getZoneLabel(safeScore);
+  const zoneColor = getZoneColor(safeScore);
+
+  // SVG semicircular gauge
+  const cx = 100, cy = 100, r = 80;
+  const startAngle = Math.PI;
+  const sweepAngle = Math.PI;
+
+  // Zone arcs
+  const zones = [
+    { from: 0,  to: 35,  color: '#16A34A' },
+    { from: 35, to: 60,  color: '#EAB308' },
+    { from: 60, to: 80,  color: '#F97316' },
+    { from: 80, to: 100, color: '#EF4444' },
+  ];
+
+  const arcPath = (start, end) => {
+    const a1 = startAngle + (start / 100) * sweepAngle;
+    const a2 = startAngle + (end / 100) * sweepAngle;
+    const x1 = cx + r * Math.cos(a1);
+    const y1 = cy + r * Math.sin(a1);
+    const x2 = cx + r * Math.cos(a2);
+    const y2 = cy + r * Math.sin(a2);
+    const largeArc = (a2 - a1) > Math.PI ? 1 : 0;
+    return `M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2}`;
+  };
+
+  // Needle
+  const needleAngle = startAngle + (safeScore / 100) * sweepAngle;
+  const needleLen = 65;
+  const nx = cx + needleLen * Math.cos(needleAngle);
+  const ny = cy + needleLen * Math.sin(needleAngle);
 
   return (
     <div style={{
       background: '#0D0D1A',
       border: '1px solid #1A1A2E',
-      borderRadius: 8,
+      borderRadius: 4,
       padding: 20,
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 16
+      textAlign: 'center',
     }}>
-      {/* TOP ROW */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#EF4444' }} />
-          <span style={{ fontFamily: "var(--font-display)", fontSize: 10, color: '#8892A0', letterSpacing: '0.1em' }}>
-            INDIA RISK SCORE
-          </span>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{
-            background: `${modeColor}15`,
-            color: modeColor,
-            border: `1px solid ${modeColor}30`,
-            padding: '2px 8px',
-            borderRadius: 4,
-            fontFamily: "var(--font-mono)",
-            fontSize: 11,
-            fontWeight: 700,
-            marginBottom: 4
-          }}>
-            {mode}
-          </div>
-          <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: '#555B66' }}>
-            {updated_at ? <RelativeTime dateString={updated_at} /> : 'Awaiting data...'}
-          </div>
+      <div style={{
+        fontFamily: "'Inter', Arial, sans-serif",
+        fontSize: 10,
+        color: '#6B7280',
+        letterSpacing: '0.08em',
+        textTransform: 'uppercase',
+        marginBottom: 12,
+      }}>
+        INDIA GTI (Geopolitical Tension Index)
+      </div>
+
+      <svg viewBox="0 0 200 120" style={{ width: '100%', maxWidth: 260 }}>
+        {zones.map((z, i) => (
+          <path key={i} d={arcPath(z.from, z.to)} fill="none" stroke={z.color} strokeWidth="10" strokeLinecap="butt" opacity={0.6} />
+        ))}
+        {/* Needle */}
+        <line
+          x1={cx} y1={cy} x2={nx} y2={ny}
+          stroke={zoneColor} strokeWidth="3" strokeLinecap="round"
+          style={{ transition: 'all 0.8s ease-out' }}
+        />
+        <circle cx={cx} cy={cy} r="5" fill={zoneColor} />
+        <text x="20" y="115" fill="#6B7280" fontFamily="'Space Mono', monospace" fontSize="9" textAnchor="middle">0</text>
+        <text x="180" y="115" fill="#6B7280" fontFamily="'Space Mono', monospace" fontSize="9" textAnchor="middle">100</text>
+      </svg>
+
+      {/* Score */}
+      <div style={{
+        fontFamily: "'Space Mono', monospace",
+        fontSize: 32,
+        fontWeight: 700,
+        color: zoneColor,
+        marginTop: -8,
+      }}>
+        <AnimatedValue value={safeScore} color={zoneColor} />
+      </div>
+
+      {/* Zone label */}
+      <div style={{
+        fontFamily: "'Inter', Arial, sans-serif",
+        fontSize: 11,
+        color: zoneColor,
+        fontWeight: 600,
+        letterSpacing: '0.1em',
+        marginTop: 4,
+      }}>
+        {zoneLabel}
+      </div>
+    </div>
+  );
+}
+
+// ────── FII/DII FLOW PANEL ──────
+function FiiDiiPanel({ data }) {
+  if (!data) {
+    return (
+      <div style={{ background: '#0D0D1A', border: '1px solid #1A1A2E', borderRadius: 4, padding: 20 }}>
+        <div style={{ fontFamily: "'Inter', Arial, sans-serif", fontSize: 10, color: '#6B7280', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 12 }}>FII/DII FLOWS</div>
+        <div style={{ color: '#6B7280', fontFamily: "'Space Mono', monospace", fontSize: 11 }}>Loading...</div>
+      </div>
+    );
+  }
+
+  const fiiNet = data?.fii?.net;
+  const diiNet = data?.dii?.net;
+
+  // Signal logic per doc
+  let signal = 'NEUTRAL';
+  if (fiiNet > 0) signal = 'BULLISH';
+  else if (fiiNet < 0 && diiNet < 0) signal = 'BEARISH';
+
+  const signalColor = signal === 'BULLISH' ? '#22C55E' : signal === 'BEARISH' ? '#EF4444' : '#EAB308';
+  const signalBg = signal === 'BULLISH' ? '#14532D' : signal === 'BEARISH' ? '#7F1D1D' : '#713F12';
+
+  const fiiColor = fiiNet != null ? (fiiNet >= 0 ? '#22C55E' : '#EF4444') : '#6B7280';
+  const diiColor = diiNet != null ? (diiNet >= 0 ? '#22C55E' : '#EF4444') : '#6B7280';
+
+  // Buy/Sell bar
+  const fiiBuy = data?.fii?.buy || 0;
+  const fiiSell = data?.fii?.sell || 0;
+  const fiiTotal = fiiBuy + fiiSell || 1;
+
+  return (
+    <div style={{ background: '#0D0D1A', border: '1px solid #1A1A2E', borderRadius: 4, padding: 20 }}>
+      <div style={{ fontFamily: "'Inter', Arial, sans-serif", fontSize: 10, color: '#6B7280', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 16 }}>FII/DII FLOWS</div>
+
+      {/* FII Net */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontFamily: "'Inter', Arial, sans-serif", fontSize: 11, color: '#6B7280', marginBottom: 4 }}>FII Net</div>
+        <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 20, fontWeight: 700, color: fiiColor }}>
+          {fiiNet != null ? <>{fiiNet >= 0 ? '+' : ''}<AnimatedValue value={fiiNet} color={fiiColor} /> <span style={{ fontSize: 13 }}>₹Cr</span></> : 'N/A'}
         </div>
       </div>
 
-      {/* SCORE + GAUGE */}
-      <div style={{ textAlign: 'center', position: 'relative' }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 4 }}>
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: 42, fontWeight: 700, color: scoreColor }}>
-            <AnimatedValue value={irs} color={scoreColor} />
-          </span>
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: 16, color: '#555B66' }}>
-            /100
-          </span>
-        </div>
-        <div style={{ width: '100%', maxWidth: 220, margin: '0 auto', marginTop: -10 }}>
-          <svg viewBox="0 0 200 120" style={{ width: '100%' }}>
-            <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="url(#gradient)" strokeWidth="8" strokeLinecap="round" opacity="0.3" />
-            <defs>
-              <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#22C55E" />
-                <stop offset="50%" stopColor="#EAB308" />
-                <stop offset="100%" stopColor="#EF4444" />
-              </linearGradient>
-            </defs>
-            {/* Needle */}
-            <g transform={`rotate(${angle}, 100, 100)`} style={{ transition: 'transform 0.6s ease-out' }}>
-              <line x1="100" y1="100" x2="100" y2="30" stroke={scoreColor} strokeWidth="3" strokeLinecap="round" />
-              <circle cx="100" cy="100" r="5" fill={scoreColor} />
-            </g>
-            <text x="20" y="115" fill="#555B66" fontFamily="var(--font-mono)" fontSize="10" textAnchor="middle">0</text>
-            <text x="100" y="20" fill="#555B66" fontFamily="var(--font-mono)" fontSize="10" textAnchor="middle">50</text>
-            <text x="180" y="115" fill="#555B66" fontFamily="var(--font-mono)" fontSize="10" textAnchor="middle">100</text>
-          </svg>
+      {/* DII Net */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontFamily: "'Inter', Arial, sans-serif", fontSize: 11, color: '#6B7280', marginBottom: 4 }}>DII Net</div>
+        <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 20, fontWeight: 700, color: diiColor }}>
+          {diiNet != null ? <>{diiNet >= 0 ? '+' : ''}<AnimatedValue value={diiNet} color={diiColor} /> <span style={{ fontSize: 13 }}>₹Cr</span></> : 'N/A'}
         </div>
       </div>
 
-      {/* 24H HISTORY SPARKLINE */}
-      <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-          <span style={{ fontFamily: "var(--font-body)", fontSize: 10, color: '#8892A0' }}>24H HISTORY</span>
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: '#555B66' }}>{history.length} readings</span>
-        </div>
-        <div style={{ height: 60 }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={history}>
-              <Area type="monotone" dataKey="irs" stroke="#F97316" fill="#F97316" fillOpacity={0.1} strokeWidth={2} isAnimationActive={false} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
+      {/* Signal badge */}
+      <div style={{
+        fontFamily: "'Space Mono', monospace",
+        fontSize: 12,
+        fontWeight: 700,
+        color: '#FFFFFF',
+        padding: '4px 12px',
+        background: signalBg,
+        borderRadius: 4,
+        display: 'inline-block',
+        marginBottom: 14,
+      }}>
+        {signal}
       </div>
 
-      {/* CONTRIBUTING FACTORS */}
-      <div>
-        <div style={{ fontFamily: "var(--font-body)", fontSize: 10, color: '#8892A0', marginBottom: 8 }}>CONTRIBUTING FACTORS</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {factors && Object.entries(factors).map(([k, v]) => {
-            const barColor = getZoneColor(v.score);
-            return (
-              <div key={k} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontFamily: "var(--font-body)", fontSize: 10, color: '#CCC', width: 120 }}>
-                  {v.label}
-                </span>
-                <div style={{ flex: 1, height: 4, background: '#1A1A2E', borderRadius: 2, overflow: 'hidden' }}>
-                  <div style={{
-                    width: `${v.score}%`,
-                    height: '100%',
-                    background: barColor,
-                    transition: 'width 0.6s ease'
-                  }} />
-                </div>
-                <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: barColor, width: 30, textAlign: 'right' }}>
-                  <AnimatedValue value={v.score} color={barColor} />
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* TOP RISK DRIVERS */}
-      <div>
-        <div style={{ fontFamily: "var(--font-body)", fontSize: 10, color: '#8892A0', marginBottom: 8 }}>TOP RISK DRIVERS</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {(top_risk_drivers || []).slice(0, 3).map((item, i) => (
-            <div key={i} style={{ display: 'flex', gap: 6, alignItems: 'flex-start' }}>
-              <span style={{ color: '#EF4444', fontSize: 12 }}>⚠</span>
-              <span style={{ fontFamily: "var(--font-body)", fontSize: 11, color: '#CCC', lineHeight: 1.3 }}>
-                {item.headline.length > 60 ? item.headline.substring(0, 60) + '...' : item.headline}
-              </span>
-            </div>
-          ))}
-          {(!top_risk_drivers || top_risk_drivers.length === 0) && (
-            <span style={{ fontFamily: "var(--font-body)", fontSize: 11, color: '#555B66' }}>No active danger signals.</span>
-          )}
-        </div>
-      </div>
-
-      {/* GRADIENT BAR */}
+      {/* FII Buy vs Sell bar */}
       <div style={{ marginTop: 8 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4, fontFamily: "var(--font-mono)", fontSize: 9, color: '#8892A0' }}>
-          <span>LOW RISK</span>
-          <span>MODERATE</span>
-          <span>ELEVATED</span>
-          <span>EXTREME</span>
+        <div style={{ display: 'flex', height: 4, borderRadius: 2, overflow: 'hidden' }}>
+          <div style={{ width: `${(fiiBuy / fiiTotal) * 100}%`, background: '#22C55E', height: '100%' }} />
+          <div style={{ width: `${(fiiSell / fiiTotal) * 100}%`, background: '#EF4444', height: '100%' }} />
         </div>
-        <div style={{ position: 'relative', height: 8, borderRadius: 4, background: 'linear-gradient(90deg, #22C55E 0%, #EAB308 50%, #EF4444 80%, #7F1D1D 100%)' }}>
-          <div style={{
-            position: 'absolute',
-            left: `${irs}%`,
-            top: -4,
-            width: 4,
-            height: 16,
-            background: '#FFF',
-            borderRadius: 2,
-            boxShadow: '0 0 4px rgba(0,0,0,0.5)',
-            transform: 'translateX(-50%)',
-            transition: 'left 0.6s ease'
-          }} />
-        </div>
-        <div style={{ textAlign: 'center', marginTop: 12, fontFamily: "var(--font-mono)", fontSize: 10, color: '#8892A0' }}>
-          IRS {irs}/100 — <span style={{ color: modeColor }}>{mode} ACTIVE</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+          <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, color: '#22C55E' }}>BUY {fiiBuy ? `₹${fiiBuy}Cr` : ''}</span>
+          <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, color: '#EF4444' }}>SELL {fiiSell ? `₹${fiiSell}Cr` : ''}</span>
         </div>
       </div>
+
+      {data?.date && data.date !== 'Unavailable' && (
+        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 10, color: '#6B7280', marginTop: 10 }}>
+          Data: {data.date}
+        </div>
+      )}
+      {data?.note === 'Volume proxy' && (
+        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 10, color: '#F97316', marginTop: 4 }}>
+          Institutional proxy (volume-derived)
+        </div>
+      )}
     </div>
   );
 }
 
 // ────── SECTOR HEATMAP COMPONENT ──────
 function SectorHeatmap({ sectors }) {
-  if (!sectors || sectors.length === 0) {
-    return (
-      <div style={{ background: '#0D0D1A', border: '1px solid #1A1A2E', borderRadius: 8, padding: 20 }}>
-        <div style={{ fontFamily: "var(--font-display)", fontSize: 10, color: '#8892A0', letterSpacing: '0.15em', marginBottom: 12 }}>
-          SECTOR HEATMAP
-        </div>
-        <div style={{ color: '#555B66', fontFamily: "var(--font-mono)", fontSize: 11 }}>Loading...</div>
-      </div>
-    );
-  }
+  const SECTOR_NAMES = ['IT', 'BANK', 'AUTO', 'FMCG', 'PHARMA', 'ENERGY', 'METAL', 'REALTY', 'INFRA', 'MEDIA'];
 
-  const getColor = (pChange) => {
-    if (pChange >= 2) return '#00FF88';
-    if (pChange >= 0.5) return '#00CC66';
-    if (pChange >= 0) return '#335544';
-    if (pChange >= -0.5) return '#553333';
-    if (pChange >= -2) return '#CC3333';
-    return '#FF4444';
+  const interpolateColor = (pChange) => {
+    // From #7F1D1D (red, -3%) to #14532D (green, +3%)
+    const clamped = Math.max(-3, Math.min(3, pChange || 0));
+    const t = (clamped + 3) / 6; // 0 to 1
+    const r = Math.round(127 * (1 - t) + 20 * t);
+    const g = Math.round(29 * (1 - t) + 83 * t);
+    const b = Math.round(29 * (1 - t) + 45 * t);
+    return `rgb(${r}, ${g}, ${b})`;
   };
 
+  // Map sectors to 2x5 grid
+  const displaySectors = SECTOR_NAMES.map((name) => {
+    const found = (sectors || []).find(s =>
+      s.name?.toUpperCase().includes(name) || s.sector?.toUpperCase().includes(name)
+    );
+    return {
+      name,
+      pChange: found?.pChange ?? 0,
+    };
+  });
+
   return (
-    <div style={{ background: '#0D0D1A', border: '1px solid #1A1A2E', borderRadius: 8, padding: 20 }}>
-      <div style={{ fontFamily: "var(--font-display)", fontSize: 10, color: '#8892A0', letterSpacing: '0.15em', marginBottom: 12 }}>
-        SECTOR HEATMAP
+    <div style={{ background: '#0D0D1A', border: '1px solid #1A1A2E', borderRadius: 4, padding: 20 }}>
+      <div style={{ fontFamily: "'Inter', Arial, sans-serif", fontSize: 10, color: '#6B7280', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 12 }}>
+        SECTOR PERFORMANCE
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-        {sectors.slice(0, 10).map((s, i) => (
+        {displaySectors.map((s, i) => (
           <div
             key={i}
             style={{
-              background: `${getColor(s.pChange)}20`,
-              border: `1px solid ${getColor(s.pChange)}40`,
+              background: interpolateColor(s.pChange),
               borderRadius: 4,
               padding: '8px 10px',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
+              cursor: 'pointer',
+              transition: 'opacity 0.2s',
             }}
+            onMouseEnter={e => e.currentTarget.style.opacity = '0.8'}
+            onMouseLeave={e => e.currentTarget.style.opacity = '1'}
           >
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: '#CCC' }}>
+            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: '#D1D5DB', fontWeight: 600 }}>
               {s.name}
             </span>
             <span style={{
-              fontFamily: "var(--font-mono)",
+              fontFamily: "'Space Mono', monospace",
               fontSize: 11,
               fontWeight: 700,
-              color: getColor(s.pChange),
+              color: '#FFFFFF',
             }}>
-              {s.pChange != null ? (s.pChange >= 0 ? '+' : '') + s.pChange.toFixed(2) : '0.00'}%
+              {s.pChange >= 0 ? '+' : ''}{s.pChange.toFixed(2)}%
             </span>
           </div>
         ))}
@@ -308,19 +351,26 @@ function SectorHeatmap({ sectors }) {
 function NewsTicker({ news }) {
   if (!news || news.length === 0) return null;
 
+  const sourceColors = {
+    ET: '#F97316',
+    RBI: '#3B82F6',
+    SEBI: '#A855F7',
+    PIB: '#22C55E',
+    IMD: '#14B8A6',
+  };
+
   const biasColor = (bias) => {
-    if (bias === 'bullish') return '#00FF88';
-    if (bias === 'bearish') return '#FF4444';
-    return '#8892A0';
+    if (bias === 'bullish') return '#22C55E';
+    if (bias === 'bearish') return '#EF4444';
+    return '#D1D5DB';
   };
 
   const items = [...news, ...news]; // Duplicate for seamless loop
-  const duration = items.length * 8; // ~8s per headline
 
   return (
     <div style={{
       width: '100%',
-      background: '#0A0A12CC',
+      background: '#0A0A0FCC',
       backdropFilter: 'blur(8px)',
       borderTop: '1px solid #1A1A2E',
       overflow: 'hidden',
@@ -330,28 +380,34 @@ function NewsTicker({ news }) {
       left: 0,
       zIndex: 1000,
     }}>
-      <div className="marquee-content" style={{ animationDuration: `${duration}s` }}>
+      <div className="marquee-content" style={{ animationDuration: '60s' }}>
         {items.map((item, i) => (
-          <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginRight: 40 }}>
+          <a
+            key={i}
+            href={item.url || '#'}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginRight: 40, textDecoration: 'none' }}
+          >
             <span style={{
-              fontFamily: "var(--font-mono)",
+              fontFamily: "'Space Mono', monospace",
               fontSize: 9,
-              color: '#555B66',
-              padding: '1px 4px',
-              border: '1px solid #1A1A2E',
+              color: '#FFFFFF',
+              padding: '1px 6px',
+              background: sourceColors[item.source?.toUpperCase()] || '#374151',
               borderRadius: 2,
+              fontWeight: 600,
             }}>
               {item.source}
             </span>
             <span style={{
-              fontFamily: "var(--font-body)",
+              fontFamily: "'Inter', Arial, sans-serif",
               fontSize: 12,
               color: biasColor(item.bias),
             }}>
               {item.headline}
             </span>
-            <span style={{ color: '#1A1A2E' }}>·</span>
-          </span>
+          </a>
         ))}
       </div>
     </div>
@@ -360,80 +416,64 @@ function NewsTicker({ news }) {
 
 
 // ════════════════════════════════════════════════
-// PULSE PAGE
+// PULSE PAGE — LIVE MARKET OVERVIEW
 // ════════════════════════════════════════════════
 export default function Pulse({ liveData }) {
   const [signals, setSignals] = useState(null);
   const [fiiDii, setFiiDii] = useState(null);
-  const [gtiData, setGtiData] = useState(null);
+  const [gtiScore, setGtiScore] = useState(null);
   const [sectors, setSectors] = useState([]);
   const [news, setNews] = useState([]);
-  const [irsData, setIrsData] = useState(null);
-  const [irsHistory, setIrsHistory] = useState([]);
   const [flashCards, setFlashCards] = useState(false);
+  const [sparkHistory, setSparkHistory] = useState({});
   const prevDataRef = useRef(null);
 
   // ────── INITIAL DATA FETCH ──────
   useEffect(() => {
-    const fetchAll = async () => {
-      const safeFetch = (url, fallback = null) =>
-        fetch(url).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).catch(() => fallback);
+    const safeFetch = (url, fallback = null) =>
+      fetch(url).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).catch(() => fallback);
 
-      const [sig, fii, sec, newsData, irsResp] = await Promise.all([
+    const fetchAll = async () => {
+      const [sig, fii, gti, sec, newsData] = await Promise.all([
         safeFetch('/api/signals'),
         safeFetch('/api/fii-dii'),
+        safeFetch('/api/gdelt/india-events'),
         safeFetch('/api/sector-performance'),
         safeFetch('/api/geopolitical-news'),
-        safeFetch('/api/india-risk-score')
       ]);
 
       if (sig) setSignals(sig);
       if (fii) setFiiDii(fii);
-      
-      // Handle potential structures for sectors ({data:[]} or [])
+      if (gti) setGtiScore(gti.gti ?? gti.score ?? 0);
       if (sec) {
         if (sec.data) setSectors(sec.data);
         else if (Array.isArray(sec)) setSectors(sec);
       }
-      
-      // Handle potential structures for news ({items:[]} or [])
       if (newsData) {
         if (newsData.items) setNews(newsData.items);
         else if (Array.isArray(newsData)) setNews(newsData);
-      }
-      
-      if (irsResp) {
-        setIrsData(irsResp);
-        setIrsHistory(prev => {
-           const newHist = [...prev, { time: new Date().toLocaleTimeString(), irs: irsResp.irs }];
-           return newHist.slice(-30);
-        });
       }
     };
 
     fetchAll();
 
-    // Independent refresh intervals
+    // Refresh intervals per doc spec
     const fiiInterval = setInterval(async () => {
       try {
         const r = await fetch('/api/fii-dii');
         if (r.ok) setFiiDii(await r.json());
       } catch {}
-    }, 5 * 60 * 1000);
+    }, 5 * 60 * 1000); // 5min
 
-    const irsInterval = setInterval(async () => {
+    const gtiInterval = setInterval(async () => {
       try {
-        const r = await fetch('/api/india-risk-score');
+        const r = await fetch('/api/gdelt/india-events');
         if (r.ok) {
-           const d = await r.json();
-           setIrsData(d);
-           setIrsHistory(prev => {
-              const newHist = [...prev, { time: new Date().toLocaleTimeString(), irs: d.irs }];
-              return newHist.slice(-30);
-           });
+          const d = await r.json();
+          setGtiScore(d.gti ?? d.score ?? 0);
         }
       } catch {}
-    }, 10 * 60 * 1000);
+    }, 15 * 60 * 1000); // 15min
 
     const sectorInterval = setInterval(async () => {
       try {
@@ -443,7 +483,7 @@ export default function Pulse({ liveData }) {
           if (d?.data) setSectors(d.data);
         }
       } catch {}
-    }, 10 * 60 * 1000);
+    }, 5 * 60 * 1000); // 5min
 
     const newsInterval = setInterval(async () => {
       try {
@@ -451,13 +491,14 @@ export default function Pulse({ liveData }) {
         if (r.ok) {
           const d = await r.json();
           if (d?.items) setNews(d.items);
+          else if (Array.isArray(d)) setNews(d);
         }
       } catch {}
-    }, 5 * 60 * 1000);
+    }, 10 * 60 * 1000); // 10min
 
     return () => {
       clearInterval(fiiInterval);
-      clearInterval(irsInterval);
+      clearInterval(gtiInterval);
       clearInterval(sectorInterval);
       clearInterval(newsInterval);
     };
@@ -468,14 +509,23 @@ export default function Pulse({ liveData }) {
     if (liveData) {
       setSignals(liveData);
       if (liveData.NEWS) setNews(liveData.NEWS);
-      if (liveData.irs != null) {
-          setIrsData(prev => prev ? { ...prev, irs: liveData.irs } : null);
-          setIrsHistory(prev => {
-              if (prev.length > 0 && prev[prev.length - 1].irs === liveData.irs) return prev;
-              const newHist = [...prev, { time: new Date().toLocaleTimeString(), irs: liveData.irs }];
-              return newHist.slice(-30);
-          });
+
+      // Build spark history from WS ticks
+      if (liveData.MARKET) {
+        setSparkHistory(prev => {
+          const next = { ...prev };
+          for (const [key, val] of Object.entries(liveData.MARKET)) {
+            if (val?.price != null) {
+              const arr = next[key] || [];
+              arr.push(val.price);
+              if (arr.length > 5) arr.shift();
+              next[key] = arr;
+            }
+          }
+          return next;
+        });
       }
+
       // Flash cards on update
       if (prevDataRef.current) {
         setFlashCards(true);
@@ -486,37 +536,30 @@ export default function Pulse({ liveData }) {
   }, [liveData]);
 
   const market = signals?.MARKET || {};
+
+  // ── The 6 cards as specified in the doc ──
   const cards = [
-    { name: 'NIFTY 50', key: 'NIFTY' },
-    { name: 'SENSEX', key: 'SENSEX' },
-    { name: 'BANKNIFTY', key: 'BANKNIFTY' },
-    { name: 'INDIA VIX', key: 'INDIAVIX' },
+    { name: 'NIFTY 50',    key: 'NIFTY' },
+    { name: 'SENSEX',      key: 'SENSEX' },
+    { name: 'BANKNIFTY',   key: 'BANKNIFTY' },
+    { name: 'INDIA VIX',   key: 'INDIAVIX' },
     { name: 'BRENT CRUDE', key: 'BRENT' },
-    { name: 'USD/INR', key: 'USD/INR' },
-    { name: 'GOLD', key: 'GOLD' },
-    { name: 'SILVER', key: 'SILVER' },
-    { name: 'COPPER', key: 'COPPER' },
+    { name: 'USD/INR',     key: 'USD/INR' },
   ];
 
-  // FII/DII signal
-  const fiiNet = fiiDii?.fii?.net;
-  const diiNet = fiiDii?.dii?.net;
-  const fiiSignal = fiiDii?.signal || 'NEUTRAL';
-  const fiiSignalColor = fiiSignal === 'BULLISH' ? '#00FF88' : fiiSignal === 'BEARISH' ? '#FF4444' : '#FFB347';
-
   return (
-    <div style={{ padding: 24, maxWidth: 1600, margin: '0 auto' }}>
+    <div style={{ padding: 24, maxWidth: 1600, margin: '0 auto', paddingBottom: 60 }}>
 
-      {/* ══ SECTION 1: METRIC CARDS ══ */}
+      {/* ═══ ROW 1: SIX LIVE METRIC CARDS ═══ */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gridTemplateColumns: 'repeat(6, 1fr)',
         gap: 12,
         marginBottom: 24,
-        paddingBottom: 60, // Space for fixed ticker
       }}>
         {cards.map((c) => {
           const d = market[c.key];
+          const isUp = d?.is_up ?? (d?.change >= 0);
           return (
             <MetricCard
               key={c.key}
@@ -524,102 +567,33 @@ export default function Pulse({ liveData }) {
               price={d?.price}
               change={d?.change}
               pChange={d?.pChange}
-              direction={d?.direction || (d?.change >= 0 ? 'up' : 'down')}
+              isUp={isUp}
+              isLive={!!d}
+              sparkline={sparkHistory[c.key]}
+              flash={flashCards}
             />
           );
         })}
       </div>
 
-      {/* ══ SECTION 2: THREE PANELS ══ */}
+      {/* ═══ ROW 2: THREE PANELS ═══ */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(3, 1fr)',
+        gridTemplateColumns: '1fr 1fr 1fr',
         gap: 16,
         marginBottom: 24,
       }}>
-
         {/* LEFT: FII/DII FLOW */}
-        <div style={{
-          background: '#0D0D1A',
-          border: '1px solid #1A1A2E',
-          borderRadius: 8,
-          padding: 20,
-        }}>
-          <div style={{
-            fontFamily: "var(--font-display)",
-            fontSize: 10,
-            color: '#8892A0',
-            letterSpacing: '0.15em',
-            marginBottom: 16,
-          }}>
-            FII / DII FLOW
-          </div>
+        <FiiDiiPanel data={fiiDii} />
 
-          {fiiDii ? (
-            <>
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ fontFamily: "var(--font-body)", fontSize: 11, color: '#8892A0', marginBottom: 4 }}>FII Net</div>
-                <div style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: 20,
-                  fontWeight: 700,
-                  color: fiiNet != null ? (fiiNet >= 0 ? '#00FF88' : '#FF4444') : '#555B66',
-                }}>
-                  {fiiNet != null ? <><AnimatedValue value={fiiNet} /> <span style={{ fontSize: 14 }}>Cr</span></> : 'N/A'}
-                </div>
-              </div>
-              <div style={{ marginBottom: 12 }}>
-                <div style={{ fontFamily: "var(--font-body)", fontSize: 11, color: '#8892A0', marginBottom: 4 }}>DII Net</div>
-                <div style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: 20,
-                  fontWeight: 700,
-                  color: diiNet != null ? (diiNet >= 0 ? '#00FF88' : '#FF4444') : '#555B66',
-                }}>
-                  {diiNet != null ? <><AnimatedValue value={diiNet} /> <span style={{ fontSize: 14 }}>Cr</span></> : 'N/A'}
-                </div>
-              </div>
-              <div style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: 12,
-                fontWeight: 700,
-                color: fiiSignalColor,
-                padding: '4px 10px',
-                background: `${fiiSignalColor}15`,
-                border: `1px solid ${fiiSignalColor}30`,
-                borderRadius: 4,
-                display: 'inline-block',
-              }}>
-                {fiiSignal}
-              </div>
-              {fiiDii?.date && fiiDii.date !== 'Unavailable' && (
-                <div style={{ fontFamily: "var(--font-body)", fontSize: 10, color: '#555B66', marginTop: 8 }}>
-                  Data: {fiiDii.date}
-                </div>
-              )}
-              {fiiDii?.note === 'Volume proxy' ? (
-                <div style={{ fontFamily: "var(--font-body)", fontSize: 10, color: '#FFB347', marginTop: 4 }}>
-                  Institutional proxy (volume-derived) — real FII data unavailable from cloud
-                </div>
-              ) : fiiDii?.unavailable ? (
-                <div style={{ fontFamily: "var(--font-body)", fontSize: 10, color: '#FF8C00', marginTop: 8 }}>
-                  NSE API unavailable — check back later
-                </div>
-              ) : null}
-            </>
-          ) : (
-            <div style={{ color: '#555B66', fontFamily: "var(--font-mono)", fontSize: 11 }}>Loading...</div>
-          )}
-        </div>
-
-        {/* CENTER: IRS WIDGET */}
-        <IrsWidget irsData={irsData} history={irsHistory} />
+        {/* CENTER: INDIA GTI GAUGE */}
+        <GtiGauge score={gtiScore} />
 
         {/* RIGHT: SECTOR HEATMAP */}
         <SectorHeatmap sectors={sectors} />
       </div>
 
-      {/* ══ SECTION 3: NEWS TICKER ══ */}
+      {/* ═══ ROW 3: NEWS TICKER ═══ */}
       <NewsTicker news={news} />
     </div>
   );

@@ -1,0 +1,125 @@
+{
+  "terminal": "India Macro Intelligence Terminal",
+  "version": "1.0",
+  "timestamp": "2026-04-03 23:13:12",
+  "SIGNAL": {
+    "direction": "BEARISH",
+    "level": "STRONG",
+    "confidence": "92%",
+    "summary": "Market bias BEARISH (STRONG) with 92% confidence"
+  },
+  "INDICES": {
+    "GTI": {
+      "score": 100,
+      "label": "GTI",
+      "name": "Geopolitical Tension"
+    },
+    "CPI": {
+      "score": 53.8,
+      "label": "CPI",
+      "name": "Commodity Pressure"
+    },
+    "CSI": {
+      "score": 100,
+      "label": "CSI",
+      "name": "Currency Stress"
+    },
+    "FPI": {
+      "score": 29.3,
+      "label": "FPI",
+      "name": "Flow Pressure"
+    },
+    "COMPOSITE": {
+      "score": 74.3,
+      "label": "COMP",
+      "name": "Overall Stress"
+    }
+  },
+  "MARKET": {
+    "NIFTY": {
+      "price": 22713.1,
+      "change": "+0.15%",
+      "direction": "up"
+    },
+    "SENSEX": {
+      "price": 73319.55,
+      "change": "+0.25%",
+      "direction": "up"
+    },
+    "CRUDE": {
+      "price": 111.54,
+      "change": "+11.41%",
+      "direction": "up"
+    },
+    "GOLD": {
+      "price": 4651.5,
+      "change": "-2.75%",
+      "direction": "down"
+    },
+    "USD/INR": {
+      "price": 92.65,
+      "change": "+0.01%",
+      "direction": "up"
+    },
+    "INDIAVIX": {
+      "price": 25.52,
+      "change": "+2.04%",
+      "direction": "up"
+    }
+  },
+  "DRIVERS": [
+    "High composite stress index (74.3)",
+    "Oil price surge (+11.4%)",
+    "Rupee weakness (USD/INR: 93.27)",
+    "Multiple geopolitical risk events (8)"
+  ],
+  "RISK_FACTORS": [
+    "High composite stress index (74.3)",
+    "Oil price surge (+11.4%)",
+    "Rupee weakness (USD/INR: 93.27)"
+  ],
+  "NEWS": [
+    {
+      "headline": "Iran war, earnings hit and more: Brokerages identify nearly 80 stocks from a bat",
+      "source": "ET_Markets",
+      "category": "geopolitical_high",
+      "bias": "bearish",
+      "link": "https://economictimes.indiatimes.com/markets/stocks/news/iran-war-earnings-hit-and-more-70-stocks-brokerages-pick-from-a-ravaged-indian-market-for-fy27/articleshow/129997387.cms"
+    },
+    {
+      "headline": "Stock markets decline 2% in early trade amid rising tensions in West Asia, surge",
+      "source": "Hindu_Business",
+      "category": "oil_risk",
+      "bias": "bearish",
+      "link": "https://www.thehindu.com/business/markets/sensex-and-nifty-stock-markets-today-amid-rising-tensions-in-west-asia-surge-in-crude-oil-price/article70814278.ece"
+    },
+    {
+      "headline": "Commercial LPG prices hiked 10%, jet fuel rates up 9% for domestic airlines",
+      "source": "Hindu_Business",
+      "category": "oil_risk",
+      "bias": "neutral",
+      "link": "https://www.thehindu.com/news/national/jet-fuel-prices-rise-doubled-commercial-lpg-price-increased/article70809777.ece"
+    },
+    {
+      "headline": "Mid-day Mood | Cooling volatility sparks market rally, India VIX sees steepest f",
+      "source": "Moneycontrol",
+      "category": "geopolitical_high",
+      "bias": "bearish",
+      "link": "https://www.moneycontrol.com/news/local-markets/mid-day-mood-|-cooling-volatility-sparks-market-rally-india-vix-sees-steepest-fall4-years_17531481.html"
+    },
+    {
+      "headline": "Quote of the day by Warren Buffett: \u201cBe fearful when others are greedy and greed",
+      "source": "ET_Markets",
+      "category": "geopolitical_high",
+      "bias": "bearish",
+      "link": "https://economictimes.indiatimes.com/markets/us-stocks/news/quote-of-the-day-by-warren-buffett-be-fearful-when-others-are-greedy-and-greedy-when-others-are-fearful/articleshow/130000406.cms"
+    }
+  ],
+  "META": {
+    "news_articles_processed": 24,
+    "bearish_news_count": 9,
+    "bullish_news_count": 0,
+    "geo_risk_events": 8,
+    "data_quality_note": "RSS=live | yfinance=~15min delay | FII=proxy"
+  }
+}

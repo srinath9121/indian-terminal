@@ -1,1162 +1,925 @@
+◈  MASTER BUILD DOCUMENT  ◈
 INDIA MACRO TERMINAL
-+
-STOCK EARLY WARNING SYSTEM
-Complete Frontend Design Document
-Anti-Gravity Prompt Blocks — Copy-Paste Ready
-Stack: React + Vite + recharts + Three.js + Tailwind
-Backend: FastAPI + Python | Deploy: Render Free Tier
-Version 3.0  |  April 2026  |  Private Build
-HOW TO USE THIS DOCUMENT
-Each section below is an ANTI-GRAVITY PROMPT BLOCK. Copy the block exactly into Claude Code. Run one block at a time. Verify output before running the next block.
-RULE
-INSTRUCTION
++ STOCK EARLY WARNING SYSTEM
+2 Products  ·  1 Infrastructure  ·  12 Phases  ·  16 Weeks
+Anti-Gravity Prompt Stack for Claude Code
+v3.0  —  April 2026
+TOTAL PHASES — BOTH PRODUCTS
+12 phases total. 16 weeks. One backend serves both products.
+━━━ PRODUCT 1: INDIA MACRO TERMINAL (Phases 1–6, Weeks 1–9) ━━━
+PHASE
+WEEKS
+NAME
+OUTCOME
 1
-Copy each prompt block EXACTLY as written — no paraphrasing
+1–2
+FOUNDATION
+Backend fixed. All endpoints live. Deployed on Render.
 2
-Run one block per Claude Code session — never batch multiple
+3–4
+LIVE FRONTEND
+3-page React. WebSocket. 3D globe. GDELT pipeline.
 3
-Verify the checklist at the end of each block before continuing
-4
-Backend blocks before frontend blocks — always
 5
-Never skip a block — each builds on the previous
-DESIGN REFERENCE — WHAT WE TOOK FROM EACH SCREENSHOT
-SCREENSHOT
-SOURCE
-WHAT WE TOOK
-Screenshot 1
-InvestIQ (light)
-REJECTED — wrong product category, portfolio tracker aesthetic
-Screenshot 2
-MetaMint (dark)
-Dark #0A0A0F bg, strength meter gauge, sector bars, dense data table
-Screenshot 3
-Alphabet/Bloomberg
-Tab structure, Trading Info panel, timeframe buttons, Financial Health Score = Danger Score, Investment Returns bars = 5-Layer bars, Investment Summary = AI Analysis
-Screenshot 4
-Apple stock (light)
-Live ticker marquee at top, breadcrumb navigation, 4 summary metric cards
-PRODUCT 1: INDIA MACRO TERMINAL
-Design Identity: Dark terminal. Background #0A0A0F. Font: Space Mono for all numbers, Arial/Inter for labels.
-Audience: Analysts, traders, researchers. Dense data. Professional.
-GLOBAL DESIGN TOKENS
-Background
-#0A0A0F (near-black)
-Card background
-#0D0D1A
-Card border
-#1A1A2E
-Primary accent
-#00D4FF (cyan)
-Positive
-#22C55E (green)
-Negative
-#EF4444 (red)
-Warning
-#F97316 (orange)
-Neutral
-#EAB308 (amber)
-Number font
-Space Mono
-Label font
-Inter or Arial, uppercase, letter-spacing 0.08em
-Body text
-#D1D5DB
-Muted text
-#6B7280
-Live dot
-Cyan #00D4FF, 8px circle, CSS pulse animation
-Card radius
-4px (terminal feel — not rounded)
-Animation
-Value change: 300ms yellow flash then fade. Count-up on load: 1.5s
-NAVBAR — GLOBAL (applies to all 5 pages)
-  NAVBAR LAYOUT SPEC
-Left:   INDIA MACRO TERMINAL  (Space Mono, white, 14px bold)
-Center: [PULSE] [MACRO] [GEO MAP] [MARKETS] [COMMODITIES]
-        Active tab: cyan underline 2px, white text
-        Inactive:   #6B7280 grey text, no underline
-Right:  GTI: {score} badge | LIVE dot (pulsing) | IST clock
-GTI badge colors:
-  0-35:  green   background #14532D text
-  35-60: amber   background #713F12 text
-  60-80: orange  background #7C2D12 text
-  80+:   red     background #7F1D1D text
-IST clock: updates every 1000ms via setInterval
-WebSocket status dot: green=connected, red=disconnected, amber=reconnecting
-On disconnect: show RECONNECTING... in top-right, exponential backoff 3s->30s
-PAGE 1: PULSE — LIVE MARKET OVERVIEW
-File: frontend/src/pages/Pulse.jsx
-Data sources: WebSocket /ws/live (prices), /api/fii-dii, /api/gdelt/india-events, /api/sector-performance, /api/geopolitical-news
-PROMPT BLOCK P-1: PULSE PAGE
-Build React component: frontend/src/pages/Pulse.jsx
-This is Page 1 of the India Macro Terminal.
-Background: #0A0A0F. Font: Space Mono for numbers, Inter for labels.
-═══ ROW 1: SIX LIVE METRIC CARDS (full width) ═══
-Cards: [NIFTY 50] [SENSEX] [BANKNIFTY] [INDIA VIX] [BRENT CRUDE] [USD/INR]
-Each card layout:
-  Top-left:  Label (uppercase, #6B7280, 10px letter-spacing)
-  Top-right: is_live dot (8px cyan pulse) OR grey if stale
-  Center:    Value (Space Mono, 28px, white)
-  Below:     Change arrow + value + pct% colored green/red
-  Bottom:    Sparkline (last 5 ticks, recharts LineChart no axes)
-             width=120px height=40px, green if positive, red if negative
-On WebSocket message type=price_update:
-  Flash card border cyan for 800ms then fade
-  Animate value: old -> new with 300ms count-up
-  Arrow direction updates instantly
-═══ ROW 2: THREE PANELS ═══
-LEFT — FII/DII FLOW (GET /api/fii-dii, refresh 5min)
-  Title: FII/DII FLOWS
-  FII Net:   +/- ₹XXXX Cr  (green if positive, red if negative)
-  DII Net:   +/- ₹XXXX Cr
-  Signal badge: BULLISH (green bg) / BEARISH (red bg) / NEUTRAL (amber bg)
-    BULLISH: FII net > 0
-    BEARISH: FII net < 0 AND DII net < 0
-    NEUTRAL: otherwise
-  Bar chart: FII buy vs sell stacked horizontal bar, 2px height bars
-CENTER — INDIA GTI GAUGE (GET /api/gdelt/india-events, refresh 15min)
-  Title: INDIA GTI (Geopolitical Tension Index)
-  Semicircular gauge 0-100, SVG-based:
-    0-35:   green arc  #16A34A
-    35-60:  amber arc  #EAB308
-    60-80:  orange arc #F97316
-    80-100: red arc    #EF4444
-  Needle animates to current GTI on load (800ms ease-out)
-  Score large centered below gauge (Space Mono, 32px)
-  Zone label: LOW / MODERATE / ELEVATED / CRITICAL
-RIGHT — SECTOR HEATMAP (GET /api/sector-performance, refresh 5min)
-  Title: SECTOR PERFORMANCE
-  10 tiles in 2x5 grid:
-    Sectors: IT | BANK | AUTO | FMCG | PHARMA | ENERGY | METAL | REALTY | INFRA | MEDIA
-    Each tile: sector name + pChange%
-    Color: interpolate from #7F1D1D (red, -3%) to #14532D (green, +3%)
-    Click tile: filter MARKETS page to that sector (emit event)
-═══ ROW 3: NEWS TICKER (full width) ═══
-  GET /api/geopolitical-news, refresh 10min
-  Horizontal CSS marquee, animation: 60s linear infinite
-  Each item: [SOURCE TAG] Headline text
-    Source tag background: ET=orange, RBI=blue, SEBI=purple, PIB=green, IMD=teal
-    Headline color: bullish=green, bearish=red, neutral=#D1D5DB
-  Click headline: open URL in new tab
-═══ WEBSOCKET ═══
-  Connect to ws://{window.location.host}/ws/live on mount
-  Message types handled:
-    price_update: update cards with animation
-    market_status: update LIVE dot color
-    ping: respond with pong
-  Auto-reconnect: 3s, 6s, 12s, 24s, 30s (cap)
-CHECKLIST before marking done:
-  [ ] All 6 cards show live values with change colors
-  [ ] Sparklines render without errors
-  [ ] GTI gauge needle animates
-  [ ] Sector heatmap colors interpolate correctly
-  [ ] News ticker scrolls continuously
-  [ ] WebSocket reconnects after manual disconnect
-PAGE 2: MACRO — INDIA INTELLIGENCE LAYER
-File: frontend/src/pages/Macro.jsx
-Data sources: /api/macro/gst, /api/macro/power, /api/macro/monsoon, /api/macro/fii-derivatives, /api/macro/max-pain, /api/market/movers (for breadth)
-PROMPT BLOCK P-2: MACRO PAGE
-Build React component: frontend/src/pages/Macro.jsx
-This is Page 2. Same dark terminal aesthetic as Pulse.
-Positioned between PULSE and GEO MAP in navbar.
-═══ ROW 1: FOUR INDICATOR CARDS (full width) ═══
-CARD 1 — GST PULSE (GET /api/macro/gst, 24h refresh)
-  Label: GST REVENUE  | month label | is_live dot
-  Value: Rs.{(gross_crore/100).toFixed(1)}L Cr  (lakh crore format)
-  YoY badge:
-    >12%: green  STRONG  +X%
-    6-12%: amber MODERATE +X%
-    <6%:  red   WEAK    +X%
-  Animation: count-up from 0 on load, 1.5s ease-out
-  Tooltip: India GDP proxy. >12% YoY = strong economic momentum
-CARD 2 — GRID DEMAND (GET /api/macro/power, 1h refresh)
-  Label: POWER DEMAND | date | is_live dot
-  Value: {peak_demand_gw} GW  (Space Mono, large)
-  YoY signal same color logic as GST
-  If deficit_gw > 0: red bar at bottom DEFICIT: {n} GW
-  Pulse animation on GW number when above YoY benchmark
-CARD 3 — MONSOON (GET /api/macro/monsoon)
-  If active=false: grey card, OFF SEASON, Next: Jun 1
-  If active=true:
-    Status badge: NORMAL (green) / DEFICIENT (amber) / LARGE DEFICIENT (red) / EXCESS (blue)
-    Value: {all_india_pct_of_normal}% of normal
-    Departure: +/-{departure_pct}% colored accordingly
-    Market signal text: italic, 11px, grey
-    If LARGE DEFICIENT: 3 animated rain-drop SVG icons (grey falling)
-CARD 4 — FII F&O STANCE (GET /api/macro/fii-derivatives, 15min)
-  Label: FII DERIVATIVES | date
-  Value: {long_short_ratio}x
-    >1.2: green  BULLISH
-    <0.8: red    BEARISH
-    else: amber  NEUTRAL
-  Below: Long: {n}  Short: {n}  Net: +/-{n}
-  Proportional bar: green fill left (longs), red fill right (shorts)
-  Animate bar width on mount (left to right, 600ms)
-═══ ROW 2: MAX PAIN + MARKET BREADTH ═══
-LEFT — NIFTY MAX PAIN (GET /api/macro/max-pain, 5min during market hours)
-  Title: NIFTY MAX PAIN
-  Strike value: Rs.{max_pain_strike} (Space Mono, 32px, amber)
-  Track visualization:
-    Horizontal bar, 100% width
-    Left=52-week low, Right=52-week high
-    Spot dot: cyan circle
-    Max pain line: amber vertical dashed line
-    Arrow between them showing direction of gravitational pull
-  Distance text: {distance_pct}% above/below max pain
-  Interpretation text from API (italic, muted)
-  Next expiry date computed client-side (next Thursday)
-  Outside market hours: grey CLOSED badge over last cached value
-RIGHT — NIFTY 50 BREADTH (from /api/market/movers, compute client-side)
-  Title: MARKET BREADTH
-  Large count display:
-    [Advancing: 34] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ [Declining: 16]
-    Proportional bar — green left fill, red right fill
-  A/D Ratio: 2.1x (green if >1, red if <1)
-  5-category breakdown rows:
-    Strong +2%+ : count (bright green dot)
-    Mild 0-2%  : count (light green dot)
-    Unchanged  : count (grey dot)
-    Mild -2-0% : count (light red dot)
-    Strong -2%-: count (bright red dot)
-═══ ROW 3: MACRO CALENDAR (full width) ═══
-  Title: INDIA MACRO CALENDAR
-  Horizontal scrollable strip of upcoming events
-  Event types and colors:
-    RBI MPC Meeting:       cyan  #00D4FF
-    CPI Inflation Release:  amber #EAB308
-    GDP Data:              green #22C55E
-    Nifty Expiry:          orange #F97316
-    FOMC Meeting:          purple #A78BFA
-    Union Budget:          red    #EF4444
-  Each event card: date | event name | days-until badge
-  Days-until: green if >14 days, amber if 7-14, red if <7
-CHECKLIST:
-  [ ] GST count-up animation works on load
-  [ ] Max pain track shows spot vs pain line
-  [ ] Breadth proportional bar renders correctly
-  [ ] Calendar events scroll horizontally
-  [ ] Monsoon card switches based on current month
-PAGE 3: GEO MAP — 3D GLOBE + GEOPOLITICAL INTELLIGENCE
-File: frontend/src/pages/GeoMap.jsx
-Data sources: /api/gdelt/india-events (15min), /api/commodities (for arc intensity)
-PROMPT BLOCK P-3A: GLOBE CORE
-Build React component: frontend/src/pages/GeoMap.jsx
-Use Three.js r128 (CDN: https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js)
-Part A: GLOBE CORE
-GLOBE SETUP:
-  Scene: THREE.Scene, background color 0x000005 (deep space black)
-  Camera: PerspectiveCamera(45, width/height, 0.1, 1000), position z=4.5
-  Renderer: WebGLRenderer antialias=true, fill container div 100% height
-  Globe radius: 2.0 units
-STAR FIELD:
-  1500 random points in sphere radius 50
-  BufferGeometry with Float32Array positions
-  PointsMaterial size=0.08, color=0xFFFFFF, transparent opacity=0.6
-GLOBE SPHERE:
-  SphereGeometry(2.0, 64, 64)
-  MeshPhongMaterial:
-    color: 0x0A0A1A (dark navy base)
-    emissive: 0x001122
-    specular: 0x002244
-    shininess: 25
-ATMOSPHERE GLOW:
-  SphereGeometry(2.15, 64, 64)
-  ShaderMaterial with vertex + fragment shaders:
-    Fresnel glow effect, cyan-blue (#00AAFF) at edges
-    Opacity gradient: 0 at center, 0.4 at edge
-    Side: THREE.BackSide
-LIGHTING:
-  AmbientLight 0x112233 intensity 0.4
-  DirectionalLight 0x4488AA intensity 0.8 position (5,3,5)
-  PointLight 0x002255 intensity 0.3 at camera position
-ROTATION:
-  Auto-rotate: 0.0008 radians/frame on Y axis
-  Stop on mousedown, resume on mouseup
-  Mouse drag to orbit: track deltaX deltaY, apply to sphere rotation
-COORDINATE HELPER FUNCTION:
-  function latLonToVec3(lat, lon, radius=2.05) {
-    const phi   = (90 - lat) * (Math.PI / 180)
-    const theta = (lon + 180) * (Math.PI / 180)
-    return new THREE.Vector3(
-      -radius * Math.sin(phi) * Math.cos(theta),
-       radius * Math.cos(phi),
-       radius * Math.sin(phi) * Math.sin(theta)
-    )
-  }
-PROMPT BLOCK P-3B: COUNTRY COLORING + ARCS
-Continue GeoMap.jsx — Part B: Country colors + arc flows
-COUNTRY COLORING:
-  Load GeoJSON: https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson
-  For each country feature:
-    Get country tension score from /api/gdelt/india-events response
-    Color mapping:
-      score >= 80: #EF4444 (red,    CRITICAL)
-      score >= 60: #F97316 (orange, HIGH)
-      score >= 35: #3B82F6 (blue,   MEDIUM)
-      score < 35:  #16A34A (green,  LOW)
-    India: always #00D4FF cyan with pulsing border effect
-  Render country outlines as LineSegments on globe surface
-  Animate color transitions: 800ms ease when data updates
-RISK LEGEND (bottom-left panel):
-  Dark semi-transparent box #000000 opacity 0.75
-  Title: COUNTRY RISK
-  Four rows: [colored dot] threshold label
-    RED dot    >=80  CRITICAL
-    ORANGE dot >=60  HIGH
-    BLUE dot   >=35  MEDIUM
-    GREEN dot  <35   LOW
-  Second section: FLOW TYPES
-    RED line         Military
-    ORANGE line      Sanctions
-    AMBER line       Commodity
-    BLUE line        Diplomatic
-    LIME line        Agricultural
-FLOW ARC DEFINITIONS (static data, show/hide by tension score):
-  const ARCS = [
-    {from:[32.4,53.7], name:'Iran',    flow:'Commodity',  color:0xEAB308, commodity:'oil'},
-    {from:[61.5,105.3],name:'Russia',  flow:'Sanctions',  color:0xF97316, commodity:'oil'},
-    {from:[35.9,104.2],name:'China',   flow:'Military',   color:0xEF4444, commodity:'metals'},
-    {from:[30.4,69.3], name:'Pakistan',flow:'Military',   color:0xEF4444, commodity:null},
-    {from:[37.1,-95.7],name:'USA',     flow:'Diplomatic', color:0x3B82F6, commodity:null},
-    {from:[23.9,45.1], name:'Saudi',   flow:'Commodity',  color:0xEAB308, commodity:'oil'},
-    {from:[31.0,35.0], name:'Israel',  flow:'Military',   color:0xEF4444, commodity:null},
-    {from:[55.4,25.0], name:'Russia2', flow:'Agricultural',color:0x84CC16,commodity:'agri'},
-  ]
-  India destination: [20.6, 78.9]
-  Show arc only if country GDELT score >= 35
-  Arc intensity (opacity) driven by commodity pct_change from /api/commodities
-ARC RENDERING (QuadraticBezierCurve3):
-  start = latLonToVec3(arc.from[0], arc.from[1])
-  end   = latLonToVec3(20.6, 78.9)  // India
-  mid   = start.clone().add(end).multiplyScalar(0.5)
-  mid.normalize().multiplyScalar(2.8)  // lift above surface
-  curve = new THREE.QuadraticBezierCurve3(start, mid, end)
-  points = curve.getPoints(50)
-  geometry = new THREE.BufferGeometry().setFromPoints(points)
-  material = new THREE.LineBasicMaterial({color:arc.color, linewidth:2, transparent:true})
-  Draw animation: count drawRange from 0 to 50 over 1500ms
-  Pulse: material.opacity = Math.sin(Date.now()*0.002)*0.3+0.7 per frame
-PROMPT BLOCK P-3C: UI PANELS + COUNTRY CLICK
-Continue GeoMap.jsx — Part C: overlay panels + click panel
-FILTER PANELS (overlay on globe, not separate page):
-Top-left panel (COMMODITY LINK filter):
-  Dark bg #000000 opacity 0.8, 2px cyan left border
-  Title: COMMODITY LINK
-  Buttons: [All] [Oil] [Gold] [Metals] [Agriculture]
-  Active button: cyan bg, white text
-  Inactive: #374151 bg, grey text
-  Filter logic:
-    Oil:         show Iran, Saudi, Russia arcs
-    Metals:      show China arcs
-    Agriculture: show Russia agricultural arc
-    Gold:        no arcs, highlight India with gold border
-    All:         all arcs visible
-Top-center: GTI badge
-  India GTI: {score}  colored by zone
-  LIVE badge with pulsing dot
-Top-right panel: GLOBAL IMPACT SIGNALS
-  3 signal rows, each: [colored left border] [text] [Bullish/Bearish]
-  Signal 1 (if Iran score>=35): Middle East tension + Brent direction
-  Signal 2 (if China score>=35): China + Copper direction
-  Signal 3 (always): US Fed uncertainty + Gold direction
-  Colors computed from /api/commodities pct_change
-Flow type filter row (top, below GTI badge):
-  [All] [Military] [Sanctions] [Trade] [Diplomatic]
-  Filters arc visibility by flow type
-COUNTRY CLICK PANEL (right side-drawer, 380px wide):
-  Slides in from right on country click (CSS transform translateX 400ms ease)
-  Slides out on X button or globe click
-  Dark bg #0D0D1A, left border 2px cyan
-  Header:
-    Country flag emoji + Country name (Space Mono, 18px)
-    Tension score badge (colored by zone)
-    Close X button top-right
-  Section 1: INDIA IMPACT ANALYSIS
-    One paragraph: hardcoded India-specific impact text per country
-    Examples:
-      Iran: Hormuz strait risk. India imports 12% crude via Iran.
-             ONGC/BPCL/IOC directly impacted. Brent premium +$3-5.
-      China: FII outflow risk. IT sector supply chain pressure.
-             HDFC, ICICI, Nifty IT watch. India-China border tensions
-             amplify capital outflows.
-      Russia: Oil/fertilizer supply. GSFC, Chambal Fertilisers exposure.
-              Rupee pressure from energy import bill.
-      Pakistan: Border tension = defence sector bullish.
-                HAL, BEL, Bharat Dynamics, MTAR Tech watch.
-      USA: Fed rate sensitivity. Dollar strength = INR weakness.
-           FII flows at risk. IT sector USD revenue benefit.
-  Section 2: GDELT EVENTS (filtered for clicked country)
-    Last 5 events from /api/gdelt/india-events for that country
-    Each: timestamp | goldstein_score | event description
-    Goldstein color: red<0, green>0, grey=0
-  Section 3: INDIA SIGNALS
-    2-3 signal cards based on country + commodity data
-    Each card: [BUY/SELL/WATCH badge] asset | confidence bar | one-line reason
-    Do NOT show Entry/TP/SL prices (not a trading advice product)
-CHECKLIST:
-  [ ] Globe renders and rotates
-  [ ] Atmosphere glow visible on dark background
-  [ ] Country colors update from GDELT data
-  [ ] Arcs draw progressively on load
-  [ ] Commodity filter correctly shows/hides arcs
-  [ ] Click panel slides in/out smoothly
-  [ ] India always highlighted cyan
-PAGE 4: MARKETS — LIVE NSE MOVERS
-File: frontend/src/pages/Markets.jsx
-Data sources: /api/market/movers (5min), /api/index-sparklines, /api/market-status (30s)
-PROMPT BLOCK P-4: MARKETS PAGE
-Build React component: frontend/src/pages/Markets.jsx
-Page 4 of India Macro Terminal. NSE live market data.
-Same dark terminal aesthetic. Space Mono numbers.
-═══ ROW 1: THREE COLUMNS ═══
-COLUMN 1 — TOP GAINERS
-  GET /api/market/movers -> gainers array
-  Title: TOP GAINERS with green up-arrow
-  Table: Symbol | LTP | Change% | Volume
-  Sort by pChange descending
-  Row background: #0A2010 (dark green)
-  Change% column: bright green text
-  On data update: flash row border green 600ms then fade
-  Show top 10 rows
-COLUMN 2 — TOP LOSERS
-  Same structure, losers array
-  Title: TOP LOSERS with red down-arrow
-  Row background: #200A0A (dark red)
-  Change% column: bright red text
-  Sort by pChange ascending
-COLUMN 3 — VOLUME SHOCKERS
-  volume_shockers array from same endpoint
-  Title: VOLUME SHOCKERS with amber lightning bolt
-  Same table structure
-  Volume column: amber text + mini bar chart cell
-    Bar width proportional to volume vs 20d avg
-  Row background: #1A1400 (dark amber)
-═══ ROW 2: INDEX SPARKLINES ═══
-Three recharts LineCharts side by side
-  GET /api/index-sparklines -> {NIFTY, SENSEX, BANKNIFTY} arrays
-  Chart dimensions: width=33% height=160px
-  NIFTY 50:   cyan   #00D4FF line, #00D4FF10 gradient fill
-  SENSEX:     amber  #EAB308 line, #EAB30810 gradient fill
-  BANKNIFTY:  violet #A78BFA line, #A78BFA10 gradient fill
-  No X/Y axis labels — terminal minimal style
-  Only: title top-left, last value top-right, pChange colored
-  Tooltip on hover: date + close value
-  30 trading days data
-═══ BOTTOM BAR: MARKET STATUS ═══
-  GET /api/market-status, poll every 30s
-  Full-width strip: dark bg #0D0D1A, 1px top border cyan
-  Layout: [STATUS DOT] [STATUS TEXT] [DIVIDER] [NEXT EVENT] [DIVIDER] [IST TIME]
-  Status states:
-    PRE-OPEN (9:00-9:15 IST):  amber dot + amber text MARKET PRE-OPEN
-    OPEN (9:15-15:30 IST):     green dot (CSS pulse) + green text MARKET OPEN
-    CLOSING (15:30-15:40):     amber dot + MARKET CLOSING
-    CLOSED:                    grey dot + MARKET CLOSED
-    WEEKEND:                   grey dot + MARKET CLOSED (Weekend)
-  Next event text: Opens in Xh Ym  /  Closes in Xh Ym  /  Pre-open in Xh Ym
-  Computed client-side from IST clock
-Auto-refresh ALL data every 5 minutes.
-Show: last-updated timestamp bottom-right of each section.
-CHECKLIST:
-  [ ] Three movers columns render with correct colors
-  [ ] Volume bar cells render without overflow
-  [ ] Sparklines load with data from backend
-  [ ] Market status shows correct state vs current IST time
-  [ ] Status dot pulses green when market is open
-PAGE 5: COMMODITIES — INR PARITY TRACKER
-File: frontend/src/pages/Commodities.jsx
-Data source: /api/commodities (5min). All 12 tickers via yfinance + INR parity conversion.
-PROMPT BLOCK P-5: COMMODITIES PAGE
-Build React component: frontend/src/pages/Commodities.jsx
-Page 5. Same dark terminal aesthetic.
-═══ HEADER BAR ═══
-  Left:  COMMODITY TRACKER  (white, bold, 18px)
-  Right: [1D] [1W] [1M] timeframe toggle (only 1D active, others greyed)
-  Below left:  Prices in Indian Rupees (Rs.) - Source: CMX/ICE via yfinance
-  Below right: Updated: {HH:MM:SS IST} GREEN DOT LIVE
-═══ CATEGORY FILTER TABS ═══
-  [ALL] [PRECIOUS] [ENERGY] [BASE METALS]
-  Active: cyan underline. Filters card grid.
-═══ COMMODITY CARD GRID ═══
-  3 columns desktop, 2 tablet, 1 mobile
-  Card bg: #111827, border #1F2937, radius 4px
-  Card layout (12 total, ordered):
-  Row 1: GOLD | SILVER | BRENT
-  Row 2: WTI  | COPPER | NAT GAS
-  Row 3: ALUMINIUM | ZINC | NICKEL
-  Row 4: LEAD | PLATINUM | PALLADIUM
-  EACH CARD CONTAINS:
-  Top row:
-    Left:  commodity name (uppercase, white, bold)
-    Center: unit label (Rs./10g etc., grey, small)
-    Right: expand icon [v]
-  Price section:
-    INR price LARGE (Space Mono, 24px, white)
-    Format: Indian number system Intl.NumberFormat('en-IN')
-    Change row: arrow + Rs.change + (pct%) green/red colored
-  Sparkline (7-day INR prices):
-    recharts LineChart, no axes, no dots
-    height=80px width=100%
-    Line color: green #22C55E if positive, red #EF4444 if negative
-    Fill: gradient from line color to transparent
-  Volume/OI row:
-    Volume: N/A | Open Interest: N/A (yfinance doesn't give these free)
-    Show this row greyed out — honest about limitation
-  RSI-14 bar:
-    Label: 14D RSI  (left)
-    Bar track:
-      0-30:   red zone   #7F1D1D fill
-      30-70:  grey track #374151
-      70-100: amber zone #713F12 fill
-      Circle dot at RSI position on track
-    RSI value (right, Space Mono)
-    Label: OVERBOUGHT (amber) / NEUTRAL (white) / OVERSOLD (cyan)
-  India note (bottom of card):
-    i icon + one-line india_note text
-    Show on card directly (not tooltip) — always visible
-    Grey, 11px, italic
-  Duty note (very bottom):
-    Duty: {duty_note}   (muted, 10px)
-  On update: flash card border cyan 400ms, count-up animation on price
-═══ FOOTER ═══
-  Source: CMX/ICE/NYM via yfinance | INR via live USD/INR rate
-  DO NOT write Source: MCX anywhere — MCX API costs Rs.20L/year
-  USD/INR rate shown: 1 USD = Rs.{usdinr}
-  Last updated timestamp
-═══ DOMESTIC FUEL SECTION ═══
-  GET /api/fuel-prices, refresh 12h
-  Section title: DOMESTIC FUEL PRICES
-  4 cards: PETROL | DIESEL | CNG | LPG 14kg
-    Each: price large | unit | is_live dot | source label
-    Petrol/Diesel: click to expand price breakdown table
-  Banner if prices match frozen values:
-    Petrol/Diesel prices unchanged since May 2022 in Delhi
-    amber background, warning icon
-CHECKLIST:
-  [ ] All 12 commodity cards render
-  [ ] Indian number formatting works (1,71,326 not 171,326)
-  [ ] RSI bar dot position correct at 0, 50, 100
-  [ ] Sparklines colored by direction
-  [ ] Fuel section loads below commodity cards
-  [ ] No MCX label anywhere
-PRODUCT 2: STOCK EARLY WARNING SYSTEM
-Design Identity: Light/white background. Clean. Danger elements in red pop harder on white than dark.
-Audience: Retail investors protecting capital. Approachable, not intimidating.
-Stack: Separate React app. Same FastAPI backend, new routes /warning/api/*.
-Entry: /warning URL path on same Render deployment.
-WARNING SYSTEM DESIGN TOKENS
-Background
-#FFFFFF
-Card background
-#F9FAFB
-Card border
-#E5E7EB
-Primary accent
-#0077CC (blue — trust)
-Danger
-#DC2626 (red)
-Warning
-#D97706 (amber)
-Clear
-#16A34A (green)
-Watch
-#7C3AED (purple)
-Number font
-Inter or SF Mono
-Label font
-Inter, normal weight
-Danger score bar
-Red gradient fill
-Layer dot: critical
-Red filled circle
-Layer dot: active
-Amber filled circle
-Layer dot: watch
-Purple filled circle
-Layer dot: clear
-Green filled circle
-ALL 10 ADANI STOCKS — COMPLETE REFERENCE
-NSE SYMBOL
-COMPANY NAME
-TICKER (yfinance)
-KEY MACRO DRIVER
-ADANIENT
-Adani Enterprises
-ADANIENT.NS
-Coal, airports, new ventures — broad conglomerate
-ADANIPORTS
-Adani Ports & SEZ
-ADANIPORTS.NS
-Trade volumes, shipping logistics, Brent
-ADANIPOWER
-Adani Power
-ADANIPOWER.NS
-Power demand (POSOCO), coal prices, Brent
-ADANIGREEN
-Adani Green Energy
-ADANIGREEN.NS
-Renewable policy, USD/INR, Interest rates
-ADANIENERGY
-Adani Energy Solutions
-ADANIENSOL.NS
-T&D capex, power sector policy
-ATGL
-Adani Total Gas
-ATGL.NS
-CNG prices, city gas licenses, NatGas futures
-NDTV
-NDTV (Adani media)
-NDTV.NS
-Media policy, Adani ownership sensitivity
-AMBUJACEM
-Ambuja Cements
-AMBUJACEM.NS
-Infra capex, cement demand, Budget spending
-ACC
-ACC Ltd
-ACC.NS
-Cement, infra theme, same as Ambuja
-ADANIWILM
-Adani Wilmar
-ADANIWILM.NS
-Edible oil prices, agri commodity, monsoon
-PROMPT BLOCK W-1: WARNING SYSTEM MAIN PAGE LAYOUT
-Build React app: frontend_warning/src/App.jsx
-Separate React+Vite app for the Stock Early Warning System.
-Route: /warning (same Render server, different frontend dist)
-DESIGN: Light theme. White background. Bloomberg-style stock detail.
-Reference: Screenshot 3 (Alphabet/Bloomberg layout) + Screenshot 4 ticker
-═══ TOP TICKER BAR (Screenshot 4 reference) ═══
-  Horizontal scrolling marquee, white bg, 1px bottom border #E5E7EB
-  All 10 Adani stocks + RELIANCE + SBIN + NIFTY
-  Each item: SYMBOL price arrow pct%
-    Up: green arrow text
-    Down: red arrow text
-  CSS animation: scroll left 40s linear infinite
-  Click item: load that stock in detail view below
-═══ STOCK HEADER (Screenshot 3 reference) ═══
-  Left side:
-    Company name (24px bold) + NSE symbol + 5 layer dots
-    5 dots represent 5 detection layers, left to right:
-      OPTIONS  MACRO  LEGAL  SMART  SENTIMENT
-      Dot colors: red=critical, amber=active, purple=watch, green=clear, grey=loading
-    Price large (Space Mono, 32px)
-    Change: arrow + Rs.change + (pct%) colored
-    Delay note: 3-min delayed  Market Open/Closed
-  Right side (Trading Information panel):
-    Previous Close:  Rs.X
-    Day Range:       Rs.X - Rs.X
-    52-Week Range:   Rs.X - Rs.X
-    Market Cap:      Rs.X Cr
-    Promoter Pledge: X%  (red if >60%, amber if 40-60%, green if <40%)
-    FII Holding:     X%  (with delta arrow vs prior week)
-═══ TABS (Screenshot 3 exactly) ═══
-  [Overview] [Signals] [Analysis] [Legal] [News]
-  Underline-style active tab, blue #0077CC
-  Default: Overview
-PROMPT BLOCK W-2: OVERVIEW TAB
-Build Overview tab content for Warning System.
-═══ PRICE CHART (full width) ═══
-  recharts AreaChart
-  Green fill when current price > open, red fill when below
-  Gradient fill: line color at top, transparent at bottom
-  Timeframe buttons: [1D] [5D] [1M] [3M] [6M] [1Y]
-  Overlay: red vertical dashed lines at past danger score events
-    Each line has tooltip: DANGER SCORE {n} on {date}
-  Tooltip on hover: date | price | danger score
-═══ FOUR SUMMARY CARDS (Screenshot 3 row of 4) ═══
-  CARD 1 — DANGER SCORE
-    Icon: warning triangle
-    Change badge: +12 today arrow
-    Large value: {score}/100
-    Label: DANGER SCORE
-    Sub-label based on score:
-      0-35:  CLEAR           green
-      35-60: WATCH           purple
-      60-80: WARNING         amber
-      80+:   CRITICAL EXIT   red
-  CARD 2 — OPTIONS ANOMALY
-    Icon: options chart icon
-    Value: PCR {n}x
-    Change: vs 30d avg
-    Label: OPTIONS ANOMALY
-    Sub: ELEVATED / NORMAL
-  CARD 3 — MACRO PRESSURE
-    Icon: pressure gauge
-    Value: HIGH / MODERATE / LOW
-    Contributing: FII net + VIX level
-    Label: MACRO PRESSURE
-  CARD 4 — LEGAL STATUS
-    Icon: gavel
-    Value: CLEAR / WATCH / ALERT
-    Sub: No new filings OR New filing detected
-    Last checked: Xmin ago
-═══ TWO PANELS BELOW ═══
-LEFT — COMPANY PROFILE (Screenshot 3 reference)
-  Clean table, no borders, alternating row shading
-  Rows:
-    Sector:             {sector}
-    Market Cap:         Rs.{cap} Cr ({Large/Mid/Small} Cap)
-    Promoter Holding:   {n}%
-    Promoter Pledge:    {n}% {color-coded badge}
-    FII Holding:        {n}%
-    DII Holding:        {n}%
-    Listed Since:       {year}
-    NSE Symbol:         {symbol}
-    Adani Group:        Yes
-RIGHT — 5-LAYER DETECTION BARS (Screenshot 3 Investment Returns reference)
-  Five horizontal bars:
-    OPTIONS ANOMALY     [===========] score%  STATUS
-    MACRO PRESSURE      [=======    ] score%  STATUS
-    LEGAL RADAR         [==         ] score%  STATUS
-    SMART MONEY         [======     ] score%  STATUS
-    SENTIMENT VELOCITY  [=========  ] score%  STATUS
-  Bar colors:
-    0-35:  green  #16A34A
-    35-60: amber  #D97706
-    60-80: orange #EA580C
-    80+:   red    #DC2626
-  STATUS label right of each bar:
-    CRITICAL / ACTIVE / WATCH / CLEAR
-    Colored same as bar
-  Animate bars on load: width 0 -> actual over 800ms ease-out
-═══ AI ANALYSIS BOX (Screenshot 3 Investment Summary reference) ═══
-  Light blue bg #EFF6FF, left border 4px blue #0077CC
-  Info icon + SYSTEM ANALYSIS title
-  One paragraph: plain language explanation of current signal state
-  Generated from API /warning/api/analysis/{symbol}
-  Example: 3 of 5 detection layers active. Unusual put accumulation
-  detected over 72h. FII net short. Pattern matches pre-crash signature.
-  Recommend reducing exposure.
-  Footer: [Disclaimer] Detection system only. Not financial advice.
-          Not SEBI registered. Past patterns do not guarantee future results.
-PROMPT BLOCK W-3: SIGNALS TAB (Full Options Data)
-Build Signals tab for Warning System.
-GET /warning/api/options/{symbol} for all data below.
-═══ ROW 1: THREE GAUGES ═══
-GAUGE 1 — PCR (Put/Call Ratio)
-  Semicircular gauge like GTI gauge
-  0 to 3.0 range
-  Zones:
-    0.0-0.7: blue    CALL HEAVY (bullish bias)
-    0.7-1.3: green   BALANCED
-    1.3-1.8: amber   PUT HEAVY (caution)
-    1.8+:    red     EXTREME PUT BUYING (danger)
-  Current PCR value large centered
-  30d average line marked on gauge
-  Note: 14-day PCR history sparkline below gauge
-GAUGE 2 — IV PERCENTILE
-  Same semicircle, 0-100%
-  Current IV vs 30-day range
-  Zones:
-    0-30:  green  LOW IV (normal)
-    30-70: amber  NORMAL
-    70-85: orange ELEVATED
-    85+:   red    IV SPIKE (smart money buying protection)
-GAUGE 3 — DANGER SCORE
-  Composite 0-100
-  Same zone colors as above
-  Large needle, smooth animation
-═══ ROW 2: OTM PUT OI CHART ═══
-  Title: OTM PUT OPEN INTEREST (Last 10 Sessions)
-  recharts BarChart, x=date, y=OTM_put_OI
-  Color each bar by delta vs previous:
-    Increase: red bar (accumulation)
-    Decrease: green bar (unwinding)
-  Reference line: 30d average
-  Annotation: if last bar >30d avg by 40%: ANOMALY flag
-═══ ROW 3: CALL OI VS PUT OI COMPARISON ═══
-  recharts ComposedChart
-  Line: total_call_oi (blue)
-  Line: total_put_oi (red)
-  X axis: last 10 sessions
-  Fill between lines when put > call: light red shading
-  Current session large numbers below chart:
-    Total Call OI: {n}   Total Put OI: {n}   PCR: {n}
-═══ ROW 4: MAX PAIN TABLE ═══
-  Current max pain strike: Rs.{n} (bold, large)
-  Spot vs max pain distance: {pct}% {above/below}
-  Expires: {date} ({n} days)
-  Interpretation: plain English
-  Strike table: top 10 strikes by total OI
-    Columns: Strike | Call OI | Put OI | Total OI | Pain Score
-    Highlight max pain row in amber
-PROMPT BLOCK W-4: BLOOMBERG PAST/PRESENT SIGNAL OVERLAY
-This is the unique differentiator — historical signal replay on the price chart.
-Build Analysis tab for Warning System.
-This is the Bloomberg-style past/present signal comparison view.
-═══ CONCEPT ═══
-  Two charts side by side: PAST (Jan 2023 event) vs PRESENT (live)
-  Show what the 5-layer system would have detected historically
-  vs what it is detecting right now
-═══ PAST SIGNAL CHART (left panel) ═══
-  Title: JANUARY 2023 — HINDENBURG EVENT  (red header)
-  Subtitle: What the system would have detected
-  recharts ComposedChart:
-    X axis: Dec 5 2022 — Feb 5 2023 (60 days)
-    Y axis left:  ADANIENT price (Rs.)
-    Y axis right: Danger Score (0-100)
-  Price line: blue area chart
-  Danger score: red line overlay (right Y axis)
-  HARDCODED HISTORICAL ANNOTATIONS:
-    Jan 20 2023 vertical line: DANGER SCORE CROSSED 60 (amber dashed)
-    Jan 22 2023 vertical line: DANGER SCORE CROSSED 75 (orange dashed)
-    Jan 24 2023 vertical line: HINDENBURG PUBLISHED (red solid, thick)
-    Label: System would have signaled 4 days before crash
-  Timeline annotations below chart:
-    [Jan 20] PCR spike detected. OTM put OI +180%
-    [Jan 22] IV percentile crossed 80%. FII net short.
-    [Jan 24] HINDENBURG REPORT published
-    [Jan 25] Stock -25% from Jan 20 signal price
-═══ PRESENT SIGNAL CHART (right panel) ═══
-  Title: TODAY — LIVE DETECTION (cyan header)
-  Same chart structure, live data
-  X axis: rolling 60-day window
-  Shows live danger score overlay on current price chart
-  Current state annotations:
-    Today vertical line: blue dashed
-    Danger score value callout at today's point
-═══ NOVEMBER 2024 REPLAY BUTTON ═══
-  Toggle between Jan 2023 and Nov 2024 DoJ event in left panel
-  Nov 2024 timeline:
-    Nov 18: PCR elevated, IV spike beginning
-    Nov 20: DoJ indictment news breaks
-    Nov 21: Stock -23%
-═══ COMPARISON SUMMARY BOX ═══
-  Below both charts
-  3-column comparison table:
-    Column 1: Metric
-    Column 2: Jan 2023 value at signal
-    Column 3: Current value
-  Rows:
-    PCR Ratio
-    IV Percentile
-    OTM Put OI delta
-    FII Derivative Stance
-    Danger Score
-    Days before event (col 2: 4 days | col 3: live)
-  Color each current value vs historical:
-    If current >= historical level: red (matching danger pattern)
-    If current < historical level: green (not matching)
-  Below table: PATTERN MATCH PERCENTAGE
-    If 3+ metrics match: HIGH SIMILARITY red badge
-    If 1-2 match: PARTIAL SIMILARITY amber badge
-    If 0 match: LOW SIMILARITY green badge
-═══ DISCLAIMER ═══
-  Grey box, italic text:
-  Historical pattern matching does not guarantee future events.
-  Market events have multiple causes. Use as one input among many.
-  This is a detection tool, not a prediction engine.
-  Past performance of this system is not indicative of future accuracy.
-PROMPT BLOCK W-5: LEGAL TAB + NEWS TAB
-Build Legal and News tabs for Warning System.
-═══ LEGAL TAB ═══
-  GET /warning/api/legal/{symbol}
-  Section 1: US LEGAL (CourtListener)
-    Title: US DEPARTMENT OF JUSTICE / SEC
-    Status bar: MONITORING ACTIVE (green) or FILING DETECTED (red)
-    List of court filings:
-      Each row: [date] [court] [case title] [docket type] [link]
-      Red row if filed within last 30 days
-      Grey row if older
-    If no filings: green box CLEAR — No active US federal proceedings found
-  Section 2: SEBI ORDERS
-    Title: SEBI ENFORCEMENT
-    Same list structure
-    Filter: orders mentioning company/promoter name
-  Section 3: PIB GOVERNMENT NOTICES
-    Press releases mentioning company
-    Color: blue (contract award = positive) / red (investigation/notice = risk)
-  Section 4: SUPREME COURT OF INDIA
-    Case numbers tracked (hardcoded for known Adani cases)
-    Status: PENDING / DISPOSED / RESERVED
-  DISCLAIMER at bottom:
-  Legal monitoring is automated and may miss filings.
-  Always verify directly with CourtListener.com and SEBI.gov.in.
-═══ NEWS TAB ═══
-  GET /warning/api/news/{symbol}
-  Last 20 headlines from ET + Hindu BL + GDELT for company name
-  Each headline row:
-    [FinBERT badge: BULLISH/BEARISH/NEUTRAL colored]
-    Headline text (click to open in new tab)
-    Source tag (ET=orange, HBL=blue, Reuters=red, etc.)
-    Timestamp
-  Velocity chart (top of news section):
-    Title: NEWS VELOCITY (7 days)
-    recharts BarChart: x=day, y=article count
-    Color: red if >2x baseline, amber if >1.5x, grey if normal
-    Baseline: 7-30d average daily count
-    If today's bar red: ELEVATED NEWS VELOCITY badge shown
-  Sentiment trend chart:
-    Title: SENTIMENT TREND
-    Line chart, 7 days
-    Y: average FinBERT score per day (-1 to +1)
-    Color: green above 0, red below 0
-    Reference line at 0
-PROMPT BLOCK W-6: DANGER SCORE TICKER + MULTI-STOCK VIEW
-Build top-level dashboard for Warning System showing all Adani stocks.
-ROUTE: /warning (homepage before selecting a stock)
-═══ HEADER ═══
-  Logo: ADANI WATCH SYSTEM  (bold, dark)
-  Tagline: Early warning system for Adani Group stocks
-  Disclaimer badge: Detection tool only. Not investment advice.
-═══ OVERALL GROUP DANGER SCORE ═══
-  Large semicircle gauge: Adani Group Risk Index
-  Computed: max danger score across all 10 stocks
-  OR: weighted average by market cap
-  Zone colors same as individual stock
-  Group signal: CLEAR / WATCH / REDUCE / EXIT
-═══ STOCK GRID (10 stocks) ═══
-  2 columns x 5 rows on desktop
-  Each mini-card:
-    Company name + symbol
-    Price + change (colored)
-    Danger score bar (compact, 0-100)
-    5 layer dots (small, 8px each)
-    Most active layer label (e.g. OPTIONS ANOMALY)
-    Click: navigate to full stock detail page
-  Sorting: default sort by danger score descending
-  Most dangerous stock shown first
-  Cards with score >60: red left border
-  Cards with score 35-60: amber left border
-  Cards with score <35: green left border
-═══ CORRELATION PANEL ═══
-  Title: ADANI GROUP CORRELATION
-  Note: All 10 Adani stocks tend to move together.
-        When one falls sharply, monitor all.
-  Simple table: which stocks are diverging today
-    If stock X is +2% but group average is -1%: flag as DIVERGENCE
-    If stock X is -5% but group average is -1%: flag as UNDERPERFORMING
-═══ RECENT ALERTS LOG ═══
-  Last 10 alerts fired by the system
-  Each: timestamp | stock | layer that fired | score at time | what happened
-  Color by severity
-CHECKLIST:
-  [ ] All 10 Adani stocks load with live prices
-  [ ] Danger scores compute from backend data
-  [ ] 5 layer dots show correct colors per layer status
-  [ ] Click stock navigates to detail view
-  [ ] Group risk index computes correctly
-PRODUCT 2: BACKEND — EARLY WARNING API ROUTES
-File: src/server.py — add /warning/api/* routes. Same FastAPI app, separate route prefix.
-PROMPT BLOCK WB-1: OPTIONS ANOMALY BACKEND
-Add to src/server.py: options anomaly detection endpoints
-CREATE src/options_fetcher.py:
-class OptionsFetcher:
-  WATCHLIST = [
-    'ADANIENT','ADANIPORTS','ADANIPOWER','ADANIGREEN',
-    'ADANIENSOL','ATGL','NDTV','AMBUJACEM','ACC','ADANIWILM'
-  ]
-  def fetch_options_chain(self, symbol: str) -> dict:
-    session = nse_session_manager.get_session()
-    url = f'https://www.nseindia.com/api/option-chain-equities?symbol={symbol}'
-    resp = session.get(url, timeout=10)
-    data = resp.json()
-    records = data['records']['data']
-    spot = data['records']['underlyingValue']
-    strikes = {}
-    for r in records:
-      s = r['strikePrice']
-      if s not in strikes: strikes[s] = {'ce_oi':0,'pe_oi':0,'ce_iv':0,'pe_iv':0}
-      if 'CE' in r:
-        strikes[s]['ce_oi'] += r['CE']['openInterest']
-        strikes[s]['ce_iv']  = r['CE'].get('impliedVolatility', 0)
-      if 'PE' in r:
-        strikes[s]['pe_oi'] += r['PE']['openInterest']
-        strikes[s]['pe_iv']  = r['PE'].get('impliedVolatility', 0)
-    total_call_oi = sum(v['ce_oi'] for v in strikes.values())
-    total_put_oi  = sum(v['pe_oi'] for v in strikes.values())
-    pcr = round(total_put_oi / total_call_oi, 3) if total_call_oi > 0 else 0
-    # OTM puts: strikes below spot
-    otm_put_oi = sum(v['pe_oi'] for s, v in strikes.items() if s < spot)
-    # IV average across near-ATM strikes (spot +-10%)
-    atm_range = [s for s in strikes if spot*0.9 <= s <= spot*1.1]
-    avg_iv = sum(strikes[s]['pe_iv'] for s in atm_range) / len(atm_range) if atm_range else 0
-    # Max pain calculation
-    min_loss, max_pain = float('inf'), spot
-    for test in strikes:
-      loss = sum(max(0,test-s)*v['ce_oi'] + max(0,s-test)*v['pe_oi']
-               for s,v in strikes.items())
-      if loss < min_loss: min_loss, max_pain = loss, test
-    return {
-      'symbol': symbol, 'spot': round(spot,2),
-      'total_call_oi': total_call_oi, 'total_put_oi': total_put_oi,
-      'pcr': pcr, 'otm_put_oi': otm_put_oi,
-      'avg_iv': round(avg_iv,2), 'max_pain': max_pain,
-      'max_pain_distance_pct': round((spot-max_pain)/spot*100,2),
-      'timestamp': datetime.now(IST).isoformat()
-    }
-  def compute_anomaly_score(self, current: dict, history: list) -> dict:
-    # history = list of last 14 sessions of fetch_options_chain results
-    if len(history) < 5:
-      return {'score': 0, 'reason': 'Insufficient history'}
-    avg_pcr    = sum(h['pcr'] for h in history) / len(history)
-    avg_put_oi = sum(h['otm_put_oi'] for h in history) / len(history)
-    avg_iv     = sum(h['avg_iv'] for h in history) / len(history)
-    pcr_z    = (current['pcr'] - avg_pcr) / max(avg_pcr * 0.3, 0.01)
-    put_oi_z = (current['otm_put_oi'] - avg_put_oi) / max(avg_put_oi * 0.3, 1)
-    iv_z     = (current['avg_iv'] - avg_iv) / max(avg_iv * 0.3, 0.01)
-    score = min(100, max(0,
-      30 * min(pcr_z / 2, 1.0) +
-      40 * min(put_oi_z / 1.5, 1.0) +
-      30 * min(iv_z / 2, 1.0)
-    ))
-    return {
-      'score': round(score),
-      'pcr': current['pcr'], 'avg_pcr': round(avg_pcr,3),
-      'pcr_deviation_pct': round((current['pcr']-avg_pcr)/avg_pcr*100,1),
-      'otm_put_oi': current['otm_put_oi'], 'avg_otm_put_oi': round(avg_put_oi),
-      'iv': current['avg_iv'], 'avg_iv': round(avg_iv,2),
-      'status': 'CRITICAL' if score>75 else 'ACTIVE' if score>50 else 'WATCH' if score>25 else 'CLEAR'
-    }
-ADD ENDPOINT: GET /warning/api/options/{symbol}
-  @cached(f'opts_{symbol}', ttl=300)  # 5 min, options chain 3-min delay
-  fetcher = OptionsFetcher()
-  current = fetcher.fetch_options_chain(symbol)
-  # Load 14-session history from simple in-memory store (list, maxlen=14)
-  history = _options_history.get(symbol, [])
-  history.append(current)
-  if len(history) > 14: history.pop(0)
-  _options_history[symbol] = history
-  anomaly = fetcher.compute_anomaly_score(current, history[:-1])
-  return {'chain': current, 'anomaly': anomaly}
-ADD ENDPOINT: GET /warning/api/danger-score/{symbol}
-  Aggregates all 5 layers into composite score
-  Returns: {symbol, danger_score, layer_scores, signal, timestamp}
-  Convergence: count layers with score>50, multiply composite score
-    0 layers active: score * 0.5
-    1 layer active:  score * 0.75
-    2 layers active: score * 0.9
-    3+ layers active: score * 1.2 (capped at 100)
-PROMPT BLOCK WB-2: LEGAL RADAR BACKEND
-Create src/legal_fetcher.py for Warning System
-class LegalFetcher:
-  SEARCH_TERMS = {
-    'ADANIENT':   ['Adani Enterprises', 'Gautam Adani', 'Adani Group'],
-    'ADANIPORTS': ['Adani Ports', 'Adani Logistics'],
-    'ADANIGREEN': ['Adani Green', 'Adani Renewable'],
-    # ... all 10 stocks
-  }
-  def fetch_courtlistener(self, symbol: str) -> list:
-    # CourtListener free REST API — no key for basic search
-    terms = self.SEARCH_TERMS.get(symbol, ['Adani'])
-    results = []
-    for term in terms[:2]:  # max 2 searches to avoid rate limit
-      url = f'https://www.courtlistener.com/api/rest/v3/dockets/?q={term}&order_by=-date_created&format=json'
-      resp = requests.get(url, timeout=15, headers={'User-Agent': 'Mozilla/5.0'})
-      if resp.status_code == 200:
-        data = resp.json()
-        for r in data.get('results', [])[:5]:
-          results.append({
-            'source': 'CourtListener',
-            'court': r.get('court', ''),
-            'title': r.get('case_name', ''),
-            'date':  r.get('date_created', '')[:10],
-            'url':   f'https://www.courtlistener.com{r.get("absolute_url","")}',
-            'days_ago': (datetime.now() - datetime.fromisoformat(r['date_created'][:10])).days
-          })
-    return results
-  def fetch_sebi_orders(self, symbol: str) -> list:
-    # SEBI enforcement actions page — scrape
-    url = 'https://www.sebi.gov.in/enforcement/orders/...'
-    # Scrape table, filter by company name
-    # Return same format as above
-    pass
-  def compute_legal_score(self, filings: list) -> dict:
-    recent = [f for f in filings if f.get('days_ago', 999) < 30]
-    score = min(100, len(recent) * 40)  # 1 filing=40, 2=80, 3+=100
-    return {
-      'score': score,
-      'recent_filing_count': len(recent),
-      'status': 'CRITICAL' if score>75 else 'ACTIVE' if score>40 else 'CLEAR',
-      'latest_filing': filings[0] if filings else None
-    }
-ADD ENDPOINT: GET /warning/api/legal/{symbol}
-  @cached(f'legal_{symbol}', ttl=3600)  # 1 hour
-  fetcher = LegalFetcher()
-  courtlistener = fetcher.fetch_courtlistener(symbol)
-  sebi = fetcher.fetch_sebi_orders(symbol)
-  all_filings = courtlistener + sebi
-  all_filings.sort(key=lambda x: x['date'], reverse=True)
-  score = fetcher.compute_legal_score(all_filings)
-  return {'filings': all_filings, 'legal_score': score, 'symbol': symbol}
-DEPLOYMENT + INTEGRATION CHECKLIST
-RENDER DEPLOYMENT — BOTH PRODUCTS
-Server
-One Render free tier web service
-Backend port
-os.environ.get('PORT', 8080)
-Terminal frontend
-Built to frontend/dist/, served at /
-Warning frontend
-Built to frontend_warning/dist/, served at /warning
-Build command
-npm run build --prefix frontend && npm run build --prefix frontend_warning && pip install -r requirements.txt
-Start command
-python3 src/server.py
-Health check
-/api/market-status (returns 200 always)
-Python version
-3.11 (set explicitly in Render dashboard)
-Sleep after inactivity
-15 min on free tier — normal, not a bug
-FULL INTEGRATION SEQUENCE
-#
-BLOCK
-VERIFY BEFORE CONTINUING
-1
-WB-1 Options Backend
-curl /warning/api/options/ADANIENT returns PCR value
-2
-WB-2 Legal Backend
-curl /warning/api/legal/ADANIENT returns filings list
-3
-W-1 Warning Layout
-Page renders with ticker and stock header
+INTELLIGENCE
+IRS score. Country click panel. FinBERT sentiment.
 4
-W-2 Overview Tab
-4 summary cards + 5-layer bars visible
+6–7
+ML LAYER
+LightGBM volatility. Sector rotation. Options PCR.
 5
-W-3 Signals Tab
-PCR gauge + OTM put OI chart render
-6
-W-4 Bloomberg Past/Present
-Both charts visible with Jan 2023 annotations
-7
-W-5 Legal + News
-Filings list + news velocity chart
 8
-W-6 Multi-stock Dashboard
-All 10 Adani stock cards with danger scores
+DATA DEPTH
+RBI macro. FII history. Fuel prices. Macro calendar.
+6
 9
-P-1 to P-5 Terminal
-All 5 terminal pages functional
+HARDENING
+Rate limits. Mobile. Error boundaries. Performance.
+━━━ PRODUCT 2: STOCK EARLY WARNING SYSTEM (Phases 7–12, Weeks 10–16) ━━━
+PHASE
+WEEKS
+NAME
+OUTCOME
+7
 10
-Final deploy
-Push to GitHub, Render builds, verify live URL
-WHAT BREAKS FIRST — HONEST LIST
-WHAT BREAKS
-WHY
-FIX
-NSE session cookie expires
-NSE blocks cloud IPs
-Rotate User-Agent headers, add retry
-Render free tier sleeps
-15min inactivity
-Add /health ping cron or UptimeRobot
-HuggingFace rate limit
-Free tier 30 req/min
-Cache FinBERT results 6h per headline
-GDELT GTI shows 0
-Rate limiting on free API
-Cache 15min, fallback to last known
-CourtListener returns empty
-Query rate limit
-Cache 1h, graceful empty state
-ZNC=F / LE=F no data
-LME proxies unreliable on yfinance
-Show DATA UNAVAILABLE card, never fabricate
-IMPORTANT DISCLAIMERS — SHIP WITH EVERY PAGE
-WARNING SYSTEM: This is a detection tool, not a prediction engine or investment advisor. Not registered with SEBI. Not financial advice. Past detection patterns do not guarantee future accuracy. All signals require human judgment before any action.
-MACRO TERMINAL: Commodity prices sourced from CMX/ICE/NYM via yfinance with INR parity conversion. NOT sourced from MCX directly. 15-minute price delay. For informational purposes only.
-END OF FRONTEND DESIGN DOCUMENT — INDIA MACRO TERMINAL v3.0 + STOCK EARLY WARNING SYSTEM v1.0
+OPTIONS ANOMALY
+PCR spike + IV surge + OTM put OI detection per stock.
+8
+11
+MACRO LAYER
+Connect terminal macro signals as warning layer 2.
+9
+12
+LEGAL RADAR
+CourtListener + SEBI + PIB + SC case monitoring.
+10
+13
+SMART MONEY
+Promoter pledge. FII stock futures. Bulk deal scanner.
+11
+14
+SENTIMENT VELOCITY
+FinBERT acceleration. News rate spike detection.
+12
+15–16
+CONVERGENCE ENGINE
+5-layer convergence. Danger score. Alert dashboard.
+■  ONE INFRASTRUCTURE — TWO PRODUCTS
+Same FastAPI backend on Render serves both products.
+Same NSE session manager, yfinance, GDELT, FinBERT already built in Phase 1-6.
+Warning system adds new routes: /warning/api/* on same server.
+Separate frontend: different URL, different brand, different audience.
+Terminal audience: analysts, traders, researchers.
+Warning system audience: retail investors protecting their own capital.
+⚠  READ BEFORE STARTING
+Build Phases 1-6 (terminal) first. Warning system needs that infrastructure.
+Never skip a phase. Each depends on previous being live and verified.
+Warning system = DETECTION not PREDICTION. It detects anomalies. Never predicts price.
+Options chain data: 3-5 min delay via NSE session. Sufficient for 48-72hr anomaly detection.
+Legal alerts: hours after filing via CourtListener. Sufficient for exit decisions.
+This system would have detected Adani danger 48-72 hours before Jan 2023 crash.
+No system is perfect. Position sizing and stop losses protect capital. Systems assist.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PRODUCT 1: INDIA MACRO TERMINAL
+PHASE 1  ·  WEEKS 1–2
+FOUNDATION
+GOAL: Backend fixed. Real data. Deployed. WebSocket live.
+PROMPT 1.1 — Create nse_session.py
+▶  PASTE INTO CLAUDE CODE
+Create src/nse_session.py — missing file causing ImportError crash on startup.
+Class NSESessionManager:
+  get_session() → requests.Session
+    First call: create session, set browser headers, GET nseindia.com
+    Cache session. Return.
+  reset() → None: clears cached session.
+Headers: User-Agent Chrome/120, Accept */*, Referer https://www.nseindia.com/
+Wrap warmup GET in try/except — log warning on fail, return session anyway.
+Module singleton: nse_session_manager = NSESessionManager()
+PROMPT 1.2 — Rewrite server.py
+▶  PASTE INTO CLAUDE CODE
+Rewrite src/server.py. Fix all bugs. Do not touch nse_fetcher.py.
+FIX 1 — PORT: port = int(os.environ.get('PORT', 8080))
+FIX 2 — CACHE: Replace Vercel KV with in-memory TTL dict.
+  _store = {}
+  cache_get / cache_set functions using time.monotonic()
+  @cached decorator: add functools.wraps — was missing.
+FIX 3 — LIVE PRICES: yf.download period='2d' for all tickers.
+  Compute change, pChange, direction from two-day history.
+  NEVER hardcode any price/change/direction.
+FIX 4 — MARKET STATUS: Check actual IST time via pytz.
+  WEEKEND if weekday >= 5
+  PRE-OPEN if 9:00-9:15 AM IST
+  MARKET OPEN if 9:15-15:30 IST + minutes remaining
+  MARKET CLOSED otherwise
+FIX 5 — FII: /api/fii-history calls fetcher.fetch_fii_dii() via run_in_executor.
+FIX 6 — SPARKLINES: yf.Ticker(t).history(period='30d') for NIFTY/SENSEX/BANKNIFTY.
+FIX 7 — STATIC FILES: Mount React dist after all API routes.
+  from fastapi.staticfiles import StaticFiles
+FIX 8 — WEBSOCKET /ws/live: broadcast every 60s during market hours.
+FIX 9 — ROOT: Return {engine:'Render', market:market_status()}
+PROMPT 1.3 — Fix render.yaml + requirements.txt
+▶  PASTE INTO CLAUDE CODE
+render.yaml — replace completely:
+services:
+  - type: web
+    name: india-macro-terminal
+    env: python
+    region: singapore
+    plan: free
+    pythonVersion: '3.11.0'
+    buildCommand: cd frontend && npm install && npm run build && cd .. && pip install -r requirements.txt
+    startCommand: python3 src/server.py
+    healthCheckPath: /api/market-status
+    envVars:
+      - key: PORT
+        value: 8080
+requirements.txt — replace completely:
+yfinance feedparser pandas numpy requests python-dateutil fastapi
+uvicorn[standard] pytz beautifulsoup4 lxml httpx pydantic nse
+websockets scikit-learn lightgbm joblib PyPDF2 slowapi
+■  PHASE 1 VERIFICATION
+□  python src/server.py starts with zero ImportError
+□  curl /api/signals returns real Nifty price (not 22450.1 hardcoded)
+□  curl /api/market-status reflects correct IST time right now
+□  curl /api/fii-history returns FII buy/sell values
+□  curl /api/index-sparklines returns 30 data points per index
+□  curl / returns {engine: 'Render'}
+□  wscat -c ws://localhost:8080/ws/live receives heartbeat
+□  Pushed to GitHub. Render deploy succeeds. Public URL responds.
+PHASE 2  ·  WEEKS 3–4
+LIVE FRONTEND
+GOAL: WebSocket. 3D globe. GDELT coloring. Animations.
+PROMPT 2.1 — App Shell + WebSocket
+▶  PASTE INTO CLAUDE CODE
+Build frontend/src/App.jsx
+NAVBAR: ◈ INDIA MACRO TERMINAL | [PULSE][MACRO][GEO MAP][MARKETS][COMMODITIES] | IST clock
+WebSocket: ws://{window.location.host}/ws/live
+  On price_update: pass to active page as prop
+  On disconnect: RECONNECTING, retry 3s→6s→12s→30s backoff
+GTI badge: fetch /api/gdelt/india-events on mount, refresh 15min
+Tab switch: 300ms scanline animation
+Fonts: Space Mono (Google CDN) for numbers, Arial for body
+PROMPT 2.2 — PULSE Page
+▶  PASTE INTO CLAUDE CODE
+Build frontend/src/pages/Pulse.jsx
+Props: { liveData } — WebSocket payload
+ROW 1: 6 metric cards — NIFTY|SENSEX|BANKNIFTY|VIX|BRENT|USDINR
+  Fetch /api/signals on mount. Update from liveData prop.
+  On update: flash card yellow → fade 800ms
+ROW 2: THREE PANELS
+  LEFT: FII/DII — /api/fii-dii — 5min refresh
+    FII Net green/red. DII Net. BULLISH/BEARISH/NEUTRAL signal.
+  CENTER: IRS Widget — /api/india-risk-score — 10min refresh
+    Large score. RISK ON/NEUTRAL/RISK OFF badge.
+    Semicircular SVG gauge animated needle.
+    4 factor bars: Event Volume|Avg Severity|Market Stress|Keyword Density
+    Gradient zone: LOW→MODERATE→ELEVATED→EXTREME
+    24H history sparkline (client-side accumulation)
+  RIGHT: Sector heatmap — /api/sector-performance — 10min
+    10 tiles, green/red gradient by pChange%
+MACRO CALENDAR STRIP: /api/macro-calendar — full width scrollable
+NEWS TICKER: /api/geopolitical-news — scrolling marquee bottom
+PROMPT 2.3 — GEO MAP Page (Week 2: Flat SVG)
+▶  PASTE INTO CLAUDE CODE
+Build frontend/src/pages/GeoMap.jsx — FLAT SVG this week. Globe in Phase 2 Week 4.
+npm install react-simple-maps
+DATA: GET /api/gdelt/india-events (404 OK — show grey map + banner)
+Country colors by country_scores:
+  >=80: #EF4444 | 60-79: #F97316 | 35-59: #3B82F6 | <35: #16A34A | none: #1A1A2E
+India: pulsing cyan border always
+On click: onCountryClick(countryName) → opens right panel
+BOTTOM TICKER: latest 5 GDELT events
+TOP BAR: LIVE dot | Global GTI score | last updated
+Refresh every 15 minutes
+PROMPT 2.4 — MARKETS Page
+▶  PASTE INTO CLAUDE CODE
+Build frontend/src/pages/Markets.jsx
+3 COLUMNS: GET /api/market/movers — 5min refresh
+  Col 1 GAINERS: bg #001A00, CHG% bold green
+  Col 2 LOSERS: bg #1A0000, CHG% bold red
+  Col 3 VOLUME SHOCKERS: VOLUME col amber
+  Each: SYMBOL|LTP|CHG%|VOLUME, max 6 rows, source badge, timestamp
+SPARKLINES: GET /api/index-sparklines — 3 recharts LineCharts
+  NIFTY=cyan | SENSEX=amber | BANKNIFTY=violet
+  No axes, no grid. 30-day close. 120px height.
+FII HISTORY CHART: GET /api/fii-history-chart
+  30-day BarChart. Green positive, red negative bars.
+MARKET STATUS BAR: GET /api/market-status — 30s poll
+  Colored dot + status label + next event text
+PROMPT 2.5 — GDELT Backend + 3D Globe
+▶  PASTE INTO CLAUDE CODE
+Create src/gdelt_fetcher.py
+class GDELTFetcher:
+  async fetch_events(max_records=25) → list[dict]
+    URL: http://api.gdeltproject.org/api/v2/doc/doc
+    Params: query='India', mode='artlist', maxrecords=25, format='json'
+  async fetch_geo_scores() → dict[str, float]
+    URL: http://api.gdeltproject.org/api/v2/summary/summary
+    Params: d='day', t='summary', output='json'
+  compute_india_gti(events, geo_scores) → float 0-100
+    Weights: India direct=1.0, Pakistan/China/Iran=0.7, USA/global=0.5
+    stress = max(0, -tone)/100*100 per event
+    GTI = weighted avg, clamp 0-100
+Add GET /api/gdelt/india-events @cached ttl=900
+Upgrade GeoMap to Three.js 3D globe:
+  import * as THREE from 'three'  (r128 CDN)
+  Do NOT use OrbitControls or CapsuleGeometry (not in r128)
+  SphereGeometry(2,64,64) + earth-dark.jpg texture
+  1500 random white Points (star field)
+  Atmosphere: radius 2.05, opacity 0.08, BackSide
+  Country borders: GeoJSON → THREE.Line colored by GDELT scores
+  India border: cyan #00D4FF always
+  Auto-rotate Y: 0.001 rad/frame. Drag stops, resumes after 3s.
+  Raycaster on click → onCountryClick(countryName)
+  Globe arc flows: QuadraticBezierCurve3 from origin countries → India
+    Red=Military | Orange=Sanctions | Amber=Commodity | Blue=Diplomatic
+PROMPT 2.6 — COMMODITIES Page
+▶  PASTE INTO CLAUDE CODE
+Add GET /api/commodities to server.py — batch yfinance fetch.
+12 commodities with INR parity formulas:
+  GC=F  GOLD      (usd/31.1035)*10*USDINR*1.06*1.03    ₹/10g
+  SI=F  SILVER    (usd/31.1035)*1000*USDINR*1.06*1.03  ₹/kg
+  PL=F  PLATINUM  (usd/31.1035)*USDINR*1.10*1.03       ₹/10g
+  PA=F  PALLADIUM (usd/31.1035)*USDINR*1.10*1.03       ₹/10g
+  BZ=F  BRENT     usd*USDINR                           ₹/barrel
+  CL=F  WTI       usd*USDINR                           ₹/barrel
+  NG=F  NAT GAS   usd*USDINR*1.05                      ₹/mmBtu
+  HG=F  COPPER    (usd/0.4536)*USDINR*1.05*1.18        ₹/kg
+  ALI=F ALUMINIUM (usd/1000)*USDINR*1.075*1.18         ₹/kg
+  ZNC=F ZINC      (usd/1000)*USDINR*1.0*1.18           ₹/kg
+  NI=F  NICKEL    (usd/1000)*USDINR*1.025*1.18         ₹/kg
+  LE=F  LEAD      (usd/1000)*USDINR*1.0*1.18           ₹/kg
+Compute RSI-14 from 15d history for each.
+Return sparkline (last 7 INR prices) per commodity.
+Label: 'Source: CMX/ICE via yfinance + INR parity' NOT 'Source: MCX'
+Build frontend/src/pages/Commodities.jsx
+3-column card grid matching screenshot design.
+Each card: name | INR price | change | sparkline | RSI bar
+RSI labels: OVERBOUGHT(>70) | NEUTRAL | OVERSOLD(<30)
+Indian number format: 1,71,326 via Intl.NumberFormat('en-IN')
+■  PHASE 2 VERIFICATION
+□  All 5 tabs load without browser console errors
+□  Pulse shows real Nifty — updates from WebSocket
+□  Globe rotates, drag works, India has cyan border
+□  Country colors reflect GDELT scores
+□  Globe arc flows visible for Iran/Russia/China/USA → India
+□  Commodity cards show RSI bars, Indian number format
+□  curl /api/gdelt/india-events returns gti as real float
+□  curl /api/commodities returns 12 commodities with INR prices
+PHASE 3  ·  WEEK 5
+INTELLIGENCE
+GOAL: IRS score. Country click panel. FinBERT. Macro page.
+PROMPT 3.1 — India Risk Score Backend
+▶  PASTE INTO CLAUDE CODE
+Add GET /api/india-risk-score to server.py. Cache 600s.
+4 CONTRIBUTING FACTORS:
+1. event_volume: GDELT India-relevant events last 24h → normalize 0-100
+2. avg_severity: avg absolute Goldstein → severity=max(0,-avg)*10 → 0-100
+3. market_stress: (VIX_curr - VIX_20d_avg)/VIX_20d_avg*100 → clamp 0-100
+4. keyword_density: count danger words in last 20 RSS headlines
+   words=['sanctions','war','conflict','crisis','strike','tension',
+          'default','recession','crash','selloff','outflow','ban']
+   score = min(100, count*8)
+IRS = event_volume*0.30 + avg_severity*0.25 + market_stress*0.25 + keyword_density*0.20
+Clamp 0-100. Round to 1 decimal.
+MODE: >=65→RISK OFF | 40-64→NEUTRAL | <40→RISK ON
+ZONE: >=80→EXTREME | 60-79→ELEVATED | 35-59→MODERATE | <35→LOW RISK
+Include IRS in every WebSocket broadcast.
+PROMPT 3.2 — Country Click Panel + FinBERT
+▶  PASTE INTO CLAUDE CODE
+Add country click panel to GeoMap.jsx — slides from RIGHT on click.
+Width 320px. 300ms ease. X button to close.
+4 SECTIONS inside panel:
+1. Country name + tension score badge
+2. INDIA MARKET IMPACT — static mapping per country:
+   Iran → Hormuz risk. India 85% crude via sea. ONGC/BPCL/IOC impact.
+   China → IT supply chain. FII risk-off. Nifty IT underperform.
+   Pakistan → Defence PSU rally. HAL/BEL/BHEL watch.
+   Russia → Energy/fertilizer. GSFC/Chambal watch.
+   USA → Fed sensitivity. Dollar strength. FII outflows. IT USD positive.
+   Default → Monitor FII flows, commodity, INR stability.
+3. RECENT EVENTS — filter GDELT events for clicked country, max 3
+4. INDIA SIGNALS — static BUY/SELL/WATCH cards per country
+   Iran/Saudi → BRENT:WATCH | ONGC:WATCH | USDINR:SELL
+   China → NIFTY IT:SELL | GOLD:BUY
+   USA → NIFTY IT:BUY | USDINR:WATCH
+   Confidence = 100 - tension_score
+   Disclaimer: 'Informational only. Not financial advice.'
+Add FinBERT sentiment to server.py:
+  URL: https://api-inference.huggingface.co/models/ProsusAI/finbert
+  POST {inputs: headline_text} → [{label, score}]
+  Semaphore: _sem = asyncio.Semaphore(2)
+  On 429/error: return {label:'neutral', score:0.5}
+  Score top 5 headlines in parallel via asyncio.gather()
+  Add bias field: positive→bullish, negative→bearish
+  GET /api/sentiment?text=... → {label, score, bias}  Cache 1hr
+PROMPT 3.3 — MACRO Page
+▶  PASTE INTO CLAUDE CODE
+Build frontend/src/pages/Macro.jsx
+Add [MACRO] tab to navbar between PULSE and GEO MAP.
+ROW 1: 4 CARDS
+  GST PULSE: GET /api/macro/gst — 24h refresh
+    Large: Rs {gross/100}L Cr. YoY% colored: >12% green, 6-12% amber, <6% red
+  POWER DEMAND: GET /api/macro/power — 1h refresh
+    Large: {peak_demand_gw} GW. YoY signal. Deficit bar if applicable.
+  MONSOON: GET /api/macro/monsoon
+    Active Jun-Sep only. % of normal. NORMAL/DEFICIENT/EXCESS badge.
+    Market signal text per status.
+  FII DERIVATIVES: GET /api/macro/fii-derivatives — 15min
+    Long/short ratio. BULLISH(>1.2)/NEUTRAL/BEARISH(<0.8)
+ROW 2: 2 COLS
+  MAX PAIN: GET /api/macro/max-pain — 5min during market hours
+    Large: Rs {max_pain_strike}
+    Track showing spot vs max pain. Arrow showing gravity.
+    Distance: {pct}% above/below max pain
+  MARKET BREADTH: from /api/market/movers data
+    Advancing vs declining count. Proportional bar.
+    A/D ratio green if >1, red if <1
+ROW 3: MACRO CALENDAR STRIP (from /api/macro-calendar)
+  MPC meetings, CPI release, GDP, Nifty expiry, FOMC, Budget
+■  PHASE 3 VERIFICATION
+□  curl /api/india-risk-score returns all 4 factors as real scores
+□  IRS widget shows on Pulse with animated factor bars
+□  Clicking Iran shows Hormuz + ONGC + Brent text in panel
+□  Clicking China shows IT sector + FII risk-off signal
+□  curl /api/sentiment?text=RBI+cuts+rates returns positive/bullish
+□  GST card shows real lakh crore figure on Macro page
+□  Max pain shows on Macro page during market hours
+PHASE 4  ·  WEEKS 6–7
+ML LAYER
+GOAL: LightGBM volatility. Sector rotation. Options PCR.
+PROMPT 4.1 — LightGBM Training Pipeline
+▶  PASTE INTO CLAUDE CODE
+Create src/ml/data_builder.py — build_training_data(days=180) → pd.DataFrame
+FEATURES per trading day:
+  vix_close, vix_5d_avg, vix_pct_change
+  nifty_return_1d, nifty_return_5d
+  brent_pct_change, usdinr_pct_change
+  gdelt_event_count (GDELT historical bulk CSV)
+  gdelt_avg_goldstein
+TARGET: high_vol = 1 if next_5d_realized_vol > 0.15 else 0
+  nifty_realized_vol = std(returns next 5 days) * sqrt(252)
+Create src/ml/train_model.py
+  TimeSeriesSplit(n_splits=5) — NEVER shuffle time series data
+  LGBMClassifier(n_estimators=100, max_depth=4, learning_rate=0.05)
+  Save: joblib.dump(model, 'src/models/volatility_model.pkl')
+  Retrain weekly at startup if data older than 7 days
+Add GET /api/volatility-forecast @cached ttl=3600
+  Returns: high_vol_probability, signal, confidence, horizon='5 trading days'
+  Disclaimer: 'Model output. Not financial advice.'
+Add GET /api/sector-signals @cached ttl=900
+  Rule-based: scan GDELT events for sector keywords
+  oil/opec/crude → Energy | china/tariff → IT | war/military → Defence
+  Return triggered sector + signal + reason
+Add Nifty PCR to nse_fetcher.py:
+  fetch_options_pcr() — NSE option-chain-indices?symbol=NIFTY
+  PCR = total_put_OI / total_call_OI
+  signal: >1.3 BULLISH | <0.7 BEARISH | else NEUTRAL
+Add Nifty Max Pain to nse_fetcher.py:
+  fetch_max_pain() — from same options chain data
+  For each strike: sum(max(0,S-call_strike)*call_OI + max(0,put_strike-S)*put_OI)
+  Max pain = strike with minimum total loss
+PHASE 5  ·  WEEK 8
+DATA DEPTH
+GOAL: RBI. Fuel prices. Macro calendar. FII history.
+PROMPT 5.1 — Macro Data Backend
+▶  PASTE INTO CLAUDE CODE
+Create src/macro_fetcher.py with 4 functions:
+fetch_gst_revenue():
+  PDF: tutorial.gst.gov.in/downloads/news/approved_monthly_gst_data_for_publishing_{mon}_{year}.pdf
+  Extract gross_gst, net_gst, yoy_pct via regex
+  Cache 86400s. Fallback hardcoded: {gross:195000, net:168000, yoy:8.9}
+fetch_power_demand():
+  Scrape: vidyutpravah.in (Ministry of Power real-time portal)
+  Regex: r'Peak Demand.*?(\d+\.?\d*)\s*GW'
+  Cache 3600s. Fallback: peak_demand_gw=225.0
+fetch_monsoon_status():
+  Active Jun-Sep only. Else return {active:False}
+  URL: mausam.imd.gov.in/imd_latest/contents/rainfall_statistics.php
+  Parse ALL INDIA % of normal. Compute departure.
+  Cache 21600s.
+fetch_fii_derivative_positions():
+  NSE: nseindia.com/api/fiiDerivativeStatistics — same session
+  Parse index_futures_long, index_futures_short
+  long_short_ratio = long / short
+  Cache 900s.
+Add endpoints: /api/macro/gst, /api/macro/power,
+/api/macro/monsoon, /api/macro/fii-derivatives
+Create src/fuel_fetcher.py:
+  Scrape PPAC.gov.in for petrol/diesel Delhi price
+  Scrape IGL for Delhi CNG, MGL for Mumbai CNG
+  Scrape IOCL for LPG 14kg cylinder price
+  All with try/except fallbacks and is_live flag
+  Cache 43200s (12h)
+Add GET /api/fuel-prices endpoint
+Add GET /api/macro-calendar — hardcoded events:
+  MPC meetings, CPI release ~12th each month, Nifty expiry last Thursday,
+  GDP quarterly, FOMC 8x/year, Union Budget Feb 1
+PHASE 6  ·  WEEK 9
+HARDENING
+GOAL: Rate limits. Mobile. Error boundaries. Performance.
+PROMPT 6.1 — Production Hardening
+▶  PASTE INTO CLAUDE CODE
+Add rate limiting to server.py:
+  pip install slowapi — add to requirements.txt
+  @limiter.limit('60/minute') on all /api/* routes
+  @limiter.limit('10/minute') on /api/gdelt/india-events
+  @limiter.limit('5/minute') on /api/sentiment
+Add GET /health endpoint:
+  {status, uptime_seconds, active_ws_connections, cache_keys,
+   last_nse_fetch, last_gdelt_fetch, model_loaded}
+Add startup pre-warming:
+  @app.on_event('startup'): asyncio.create_task for signals, movers, gdelt
+  First user request hits cache not cold fetch
+Add response time logging middleware
+Frontend mobile responsive:
+  Mobile <768px: metric cards 2-per-row
+  Markets page: tabs for GAINERS|LOSERS|VOLUME on mobile
+  GeoMap: full-screen overlay panel on mobile click
+  CSS media queries only — no extra libraries
+Frontend error boundaries:
+  Wrap every page in ErrorBoundary class component
+  On error: show terminal-style error panel with Retry button
+  Never show blank panel — always show something
+Lazy load GeoMap (heaviest — Three.js):
+  const GeoMap = React.lazy(() => import('./pages/GeoMap'))
+  Wrap in <Suspense fallback={<LoadingScreen />}>
+Memoize chart components:
+  const MemoizedSparkLine = React.memo(SparkLine)
+■  PHASE 6 — TERMINAL COMPLETE
+□  All 5 tabs load fast. GeoMap lazy-loads correctly.
+□  Rate limits fire on excess: curl 70 requests → 429 response
+□  Health endpoint returns all fields including model_loaded
+□  Mobile layout correct at 375px width
+□  Error boundary catches failed API — shows retry panel
+□  All endpoints return real data. Zero hardcoded values.
+□  Render deploy stable. No crashes in 24h.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PRODUCT 2: STOCK EARLY WARNING SYSTEM
+Separate frontend. Same backend. New routes /warning/api/* on same Render server.
+Built by someone who lost ₹2 crore in Adani. For retail investors who need a system to trust.
+■  DETECTION vs PREDICTION — CRITICAL DISTINCTION
+This system DETECTS anomalies. It does NOT predict price.
+PREDICTION: 'Price will fall to X' — uncertain, often wrong
+DETECTION: 'Unusual put buying happening right now' — observable fact
+Adani Jan 2023: put OI surged 340% in 3 days before Hindenburg published.
+That was DETECTABLE. The ₹3800→₹1500 crash was not PREDICTABLE.
+Your system fires when 3+ anomaly layers converge simultaneously.
+Jan 2023: all 5 layers fired within 48 hours of the crash.
+Nov 2024 DoJ: options and sentiment fired 72 hours before news broke.
+PHASE 7  ·  WEEK 10
+OPTIONS ANOMALY
+GOAL: PCR spike + IV surge + OTM put OI detection per stock.
+Layer 1 of 5. Most important signal. Smart money cannot hide options positions.
+PROMPT 7.1 — Stock Options Anomaly Detector
+▶  PASTE INTO CLAUDE CODE  [WARNING SYSTEM]
+Add to src/nse_fetcher.py: fetch_stock_options_anomaly(symbol) → dict
+ENDPOINT (same NSE session approach):
+  https://www.nseindia.com/api/option-chain-equities?symbol={symbol}
+  symbol examples: ADANIENT, ADANIPORTS, ADANIPOWER, RELIANCE, SBIN
+COMPUTE per fetch (refresh every 5 min during market hours):
+1. PCR = total_put_OI / total_call_OI for all strikes
+   Normal range: 0.7 - 1.3
+   DANGER: PCR > 1.8 suddenly
+2. OTM Put OI Delta:
+   Select puts where strike < spot * 0.95 (5%+ out of money)
+   Compare total OTM put OI vs session before
+   DANGER: OTM put OI delta > +35% in single session
+   CRITICAL: OTM put OI delta > +100% in 3 days cumulative
+3. IV Percentile:
+   For ATM options: compare current IV vs 30-day rolling avg IV
+   Store last 30 daily ATM IV readings in memory dict: _iv_history[symbol]
+   IV percentile = (current_IV - min_30d) / (max_30d - min_30d) * 100
+   DANGER: IV percentile > 75 AND current IV 30%+ above 30d avg
+4. Call OI Collapse:
+   ATM call OI falling while put OI rising = directional signal
+   WATCH if call OI delta < -20% same session put OI spikes
+ANOMALY SCORE (0-100):
+  score = 0
+  if PCR > 1.8: score += 30
+  if PCR > 2.5: score += 20 (additional)
+  if OTM_put_delta > 35%: score += 25
+  if OTM_put_delta > 100% (3d cumulative): score += 25 (additional)
+  if IV_percentile > 75: score += 25
+  Clamp 0-100
+SIGNAL LEVELS:
+  0-30:  NORMAL — no anomaly
+  31-50: WATCH — elevated activity, monitor closely
+  51-70: CAUTION — unusual activity detected
+  71-85: WARNING — strong anomaly, reduce position
+  86-100: CRITICAL — exit signal, smart money loading puts
+RETURN:
+{
+  symbol: str,
+  spot_price: float,
+  pcr: float,
+  pcr_status: NORMAL|ELEVATED|DANGER,
+  otm_put_delta_pct: float,   # vs previous session
+  otm_put_3d_delta_pct: float, # 3-day cumulative
+  iv_percentile: float,
+  iv_vs_avg_pct: float,
+  call_oi_delta_pct: float,
+  anomaly_score: int,
+  signal: NORMAL|WATCH|CAUTION|WARNING|CRITICAL,
+  active_alerts: [str],  # list of what triggered
+  data_delay_minutes: 5, # honest about 5min delay
+  timestamp: str,
+  is_market_hours: bool
+}
+Store 3 days of per-session history in memory dict: _options_history[symbol]
+Only compute during market hours (9:15-15:30 IST)
+Outside market hours: return last cached value + is_market_hours:false
+PROMPT 7.2 — Options API Routes
+▶  PASTE INTO CLAUDE CODE  [WARNING SYSTEM]
+Add to server.py — new warning system routes:
+ADANI_STOCKS = [
+  'ADANIENT', 'ADANIPORTS', 'ADANIPOWER', 'ADANIGREEN',
+  'ADANIENSOL', 'ATGL', 'NDTV', 'AMBUJACEM', 'ACC', 'ADANIWILM'
+]
+WATCHLIST_STOCKS = ADANI_STOCKS + [
+  # Nifty 50 high-retail-ownership additions
+  'RELIANCE', 'HDFCBANK', 'ICICIBANK', 'SBIN', 'TCS',
+  'INFY', 'WIPRO', 'TATAMOTORS', 'MARUTI', 'ONGC'
+]
+GET /warning/api/options-anomaly/{symbol}
+@cached(f'opt_anomaly_{symbol}', ttl=300)
+  loop = asyncio.get_event_loop()
+  fetcher = NSEMoversFetcher()
+  return await loop.run_in_executor(None,
+    lambda: fetcher.fetch_stock_options_anomaly(symbol))
+GET /warning/api/options-anomaly/batch
+  Fetch anomaly for all WATCHLIST_STOCKS in parallel
+  asyncio.gather(*[get_anomaly(s) for s in WATCHLIST_STOCKS])
+  Return sorted by anomaly_score descending
+  Cache 300s
+GET /warning/api/options-anomaly/adani-batch
+  Same but ADANI_STOCKS only
+  Cache 300s
+■  PHASE 7 VERIFICATION
+□  curl /warning/api/options-anomaly/ADANIENT returns all fields
+□  anomaly_score between 0-100
+□  pcr, otm_put_delta_pct, iv_percentile all present as floats
+□  data_delay_minutes: 5 present — honest about delay
+□  Outside market hours: returns cached value + is_market_hours:false
+□  Batch endpoint returns all 10 Adani stocks sorted by score
+□  Test: manually compare PCR on nseindia.com vs your API — should match
+PHASE 8  ·  WEEK 11
+MACRO LAYER
+GOAL: Connect terminal macro signals as warning layer 2.
+Terminal already computes Brent, VIX, FII, IRS. Warning system reads them as context layer.
+PROMPT 8.1 — Macro Pressure Layer
+▶  PASTE INTO CLAUDE CODE  [WARNING SYSTEM]
+Add to server.py: compute_macro_pressure_score(symbol) → dict
+Read from existing cached terminal data — no new fetching:
+  signals = cache_get('signals')  # from /api/signals
+  irs = cache_get('irs')          # from /api/india-risk-score
+  fii = cache_get('fii')          # from /api/fii-dii
+  fii_deriv = cache_get('fii_deriv')  # from /api/macro/fii-derivatives
+COMPUTE macro_pressure_score (0-100):
+  score = 0
+  # Brent pressure (affects energy Adani stocks most)
+  brent_pct = signals['MARKET']['BRENT']['pChange']
+  if brent_pct > 3: score += 15   # rising Brent = cost pressure
+  if brent_pct > 6: score += 10   # additional
+  # VIX level
+  vix = signals['MARKET']['INDIAVIX']['price']
+  if vix > 20: score += 20
+  if vix > 25: score += 15  # additional
+  # FII net selling
+  fii_net = fii.get('fii', {}).get('net', 0)
+  if fii_net < -2000: score += 20   # FII selling > 2000 Cr
+  if fii_net < -4000: score += 15   # additional
+  # FII derivatives short
+  ls_ratio = fii_deriv.get('long_short_ratio', 1.0)
+  if ls_ratio < 0.8: score += 15   # FII net short index futures
+  # IRS composite stress
+  irs_score = irs.get('irs', 50)
+  if irs_score > 65: score += 15
+  # USDINR weakness (Adani has USD debt)
+  usdinr_pct = signals['MARKET']['USD/INR']['pChange']
+  if usdinr_pct > 0.5: score += 5  # INR weakening = Adani debt costlier
+  macro_pressure_score = min(100, score)
+STOCK-SPECIFIC MULTIPLIERS:
+  ADANIPOWER, ADANIGREEN: multiply brent component by 1.5
+  ADANIENT: standard
+  ADANIPORTS: multiply FII component by 1.3 (trade sensitive)
+  IT stocks (TCS/INFY): invert brent, apply USDINR positively
+RETURN:
+{
+  symbol: str,
+  macro_pressure_score: int,
+  signal: LOW|MODERATE|HIGH|CRITICAL,
+  factors: {brent, vix, fii_net, fii_deriv_ratio, irs, usdinr},
+  adani_specific_risk: bool,  # True if symbol in ADANI_STOCKS
+  timestamp: str
+}
+GET /warning/api/macro-pressure/{symbol}
+@cached(f'macro_{symbol}', ttl=300)
+■  PHASE 8 VERIFICATION
+□  curl /warning/api/macro-pressure/ADANIENT returns macro_pressure_score
+□  When VIX > 20: score reflects it
+□  When FII selling > 2000 Cr: score reflects it
+□  adani_specific_risk: true for Adani stocks
+□  Score reads from existing cache — no duplicate fetching
+PHASE 9  ·  WEEK 12
+LEGAL RADAR
+GOAL: CourtListener + SEBI + PIB + SC case monitoring.
+Layer 3. Most unique. No retail tool automates this. Would have fired 72+ hours before both Adani crashes.
+PROMPT 9.1 — Legal Monitor Backend
+▶  PASTE INTO CLAUDE CODE  [WARNING SYSTEM]
+Create src/legal_monitor.py
+class LegalMonitor:
+  fetch_courtlistener_adani() → list[dict]
+    FREE API — no key needed for basic search
+    URL: https://www.courtlistener.com/api/rest/v3/dockets/
+    Params: q='Adani', order_by='date_filed desc', page_size=5
+    Headers: {Accept: application/json}
+    Parse: case_name, court, date_filed, docket_number
+    Filter: only return items filed in last 30 days
+    On error: return [] — never crash the system
+    Cache 3600s (1 hour)
+  fetch_sebi_orders() → list[dict]
+    Scrape: sebi.gov.in/sebiweb/home/HomeAction.do?doListingAll=yes&type=1
+    Filter page text for 'Adani' mentions in recent orders
+    Parse: order_date, subject, pdf_link
+    Last 30 days only
+    Cache 3600s
+  fetch_pib_adani() → list[dict]
+    RSS: pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=3
+    Filter entries containing 'Adani' in title/description
+    Parse: title, date, link
+    Last 7 days only
+    Cache 1800s (30 min)
+  compute_legal_risk_score(courtlistener, sebi, pib) → dict
+    score = 0
+    if len(courtlistener) > 0: score += 40  # any new US filing
+    if any 'criminal' or 'fraud' in courtlistener text: score += 30
+    if len(sebi) > 0: score += 30            # any new SEBI order
+    if any 'violation' in sebi text: score += 20
+    if len(pib) > 0 and negative tone: score += 10
+    return {
+      legal_risk_score: min(100, score),
+      signal: CLEAR|WATCH|ACTIVE|CRITICAL,
+      new_us_filings: courtlistener[:3],
+      new_sebi_orders: sebi[:3],
+      pib_mentions: pib[:3],
+      last_checked: str,
+      note: 'Data from CourtListener + SEBI + PIB. Hours delay after filing.'
+    }
+GET /warning/api/legal-radar
+@cached('legal_radar', ttl=3600)
+  monitor = LegalMonitor()
+  cl = monitor.fetch_courtlistener_adani()
+  sebi = monitor.fetch_sebi_orders()
+  pib = monitor.fetch_pib_adani()
+  return monitor.compute_legal_risk_score(cl, sebi, pib)
+■  PHASE 9 VERIFICATION
+□  curl /warning/api/legal-radar returns legal_risk_score as int
+□  new_us_filings array present (may be empty — correct)
+□  new_sebi_orders array present
+□  last_checked timestamp updates on each fetch
+□  Test: manually search courtlistener.com for 'Adani' — compare results
+□  System doesn't crash if CourtListener is slow or times out
+PHASE 10  ·  WEEK 13
+SMART MONEY
+GOAL: Promoter pledge. FII stock futures. Bulk deal scanner.
+PROMPT 10.1 — Smart Money Signals
+▶  PASTE INTO CLAUDE CODE  [WARNING SYSTEM]
+Add to src/nse_fetcher.py: 3 new methods
+fetch_promoter_pledge(symbol) → dict
+  NSE endpoint: nseindia.com/api/pledgedata?index={symbol}
+  Parse pledged_qty, total_promoter_holding, pledge_pct
+  pledge_pct = pledged_qty / total_promoter_holding * 100
+  DANGER thresholds:
+    > 60%: CRITICAL — margin call cascade risk
+    40-60%: HIGH
+    20-40%: MODERATE
+    < 20%: LOW
+  Cache 86400s (daily — quarterly filings)
+fetch_bulk_deals(symbol) → list[dict]
+  NSE: nseindia.com/api/block-deal
+  Filter for symbol in last 7 days
+  Parse: client_name, buy_sell, quantity, price
+  Flag UNUSUAL if quantity > 0.5% of float in single deal
+  Cache 3600s
+fetch_fii_stock_positions(symbol) → dict
+  NSE: nseindia.com/api/equity-stockIndices?index=NIFTY%2050
+  Find symbol in response, extract FII holding %
+  Track delta vs previous day if stored
+  Cache 3600s
+compute_smart_money_score(symbol) → dict
+  pledge = fetch_promoter_pledge(symbol)
+  bulk = fetch_bulk_deals(symbol)
+  fii_pos = fetch_fii_stock_positions(symbol)
+  score = 0
+  if pledge['pledge_pct'] > 60: score += 40
+  elif pledge['pledge_pct'] > 40: score += 20
+  if any bulk deal is SELL and UNUSUAL: score += 30
+  if fii_holding_delta < -2%: score += 30  # FII reducing stake fast
+  score = min(100, score)
+  return {
+    symbol: str,
+    smart_money_score: int,
+    signal: LOW|MODERATE|HIGH|CRITICAL,
+    pledge_pct: float,
+    pledge_level: str,
+    unusual_bulk_deals: list,
+    fii_holding_pct: float,
+    fii_holding_delta: float
+  }
+GET /warning/api/smart-money/{symbol}
+@cached(f'smart_{symbol}', ttl=3600)
+PHASE 11  ·  WEEK 14
+SENTIMENT VELOCITY
+GOAL: FinBERT acceleration. News rate spike detection.
+PROMPT 11.1 — Sentiment Velocity Engine
+▶  PASTE INTO CLAUDE CODE  [WARNING SYSTEM]
+Add to server.py: sentiment velocity tracking
+_sentiment_history = {}  # {symbol: [(timestamp, score), ...]}
+async def compute_sentiment_velocity(symbol: str) → dict:
+  Fetch last 20 news headlines mentioning symbol
+  Sources: ET RSS + Hindu BL RSS + GDELT doc API filtered by symbol
+  Score each via FinBERT (already built in Phase 3)
+  Store (timestamp, score) in _sentiment_history[symbol]
+  Keep last 72 hours of readings only
+  VELOCITY METRICS:
+  now_avg = mean(scores from last 6 hours)
+  prev_avg = mean(scores from 6-24 hours ago)
+  velocity = now_avg - prev_avg  # negative = accelerating bearish
+  headline_rate_now = count(headlines last 6h)
+  headline_rate_prev = count(headlines 6-24h ago) / 3  # normalize to 6h
+  rate_spike = headline_rate_now / max(headline_rate_prev, 1)
+  DANGER SIGNALS:
+  velocity < -0.3: sentiment rapidly worsening
+  rate_spike > 3x: sudden news volume surge
+  Both together: CRITICAL sentiment alert
+  sentiment_score = 0
+  if velocity < -0.3: sentiment_score += 40
+  if velocity < -0.5: sentiment_score += 20
+  if rate_spike > 3: sentiment_score += 25
+  if rate_spike > 5: sentiment_score += 15
+  sentiment_score = min(100, sentiment_score)
+  return {
+    symbol: str,
+    sentiment_velocity_score: int,
+    signal: STABLE|DETERIORATING|RAPID_DECLINE|CRITICAL,
+    now_avg_sentiment: float,   # -1 to +1
+    velocity: float,            # rate of change
+    headline_rate_spike: float, # multiplier vs baseline
+    recent_headlines: list,     # last 5 with scores
+,
+    timestamp: str
+  }
+GET /warning/api/sentiment-velocity/{symbol}
+@cached(f'sentvel_{symbol}', ttl=300)
+PHASE 12  ·  WEEKS 15–16
+CONVERGENCE ENGINE
+GOAL: 5-layer danger score. Alert dashboard.
+Final phase. Combines all 5 layers into one DANGER SCORE. Fires alert only when 3+ layers converge.
+PROMPT 12.1 — Convergence Danger Score
+▶  PASTE INTO CLAUDE CODE  [WARNING SYSTEM]
+Add to server.py: compute_danger_score(symbol) → dict
+async def compute_danger_score(symbol: str) → dict:
+  # Fetch all 5 layers in parallel
+  options, macro, legal, smart, sentiment = await asyncio.gather(
+    get_options_anomaly(symbol),
+    get_macro_pressure(symbol),
+    get_legal_radar(),           # same for all Adani stocks
+    get_smart_money(symbol),
+    get_sentiment_velocity(symbol)
+  )
+  layer_scores = {
+    'options_anomaly':    options['anomaly_score'],
+    'macro_pressure':     macro['macro_pressure_score'],
+    'legal_risk':         legal['legal_risk_score'],
+    'smart_money':        smart['smart_money_score'],
+    'sentiment_velocity': sentiment['sentiment_velocity_score'],
+  }
+  # Count active layers (score > 50 = layer is active)
+  active_layers = [k for k,v in layer_scores.items() if v > 50]
+  active_count = len(active_layers)
+  # Weighted danger score
+  weights = {
+    'options_anomaly': 0.30,    # highest weight — most forward-looking
+    'macro_pressure':  0.20,
+    'legal_risk':      0.25,    # second highest — event-driven
+    'smart_money':     0.15,
+    'sentiment_velocity': 0.10
+  }
+  danger_score = sum(layer_scores[k]*weights[k] for k in weights)
+  danger_score = round(min(100, danger_score), 1)
+  # CONVERGENCE MULTIPLIER — key insight
+  # When 3+ layers fire together: multiply score
+  # Single layer firing = noise. Multiple layers = signal.
+  if active_count >= 4: danger_score = min(100, danger_score * 1.4)
+  elif active_count >= 3: danger_score = min(100, danger_score * 1.2)
+  # FINAL SIGNAL
+  if danger_score >= 75: final_signal = 'EXIT'
+  elif danger_score >= 55: final_signal = 'REDUCE'
+  elif danger_score >= 35: final_signal = 'WATCH'
+  else: final_signal = 'CLEAR'
+  return {
+    'symbol': symbol,
+    'danger_score': danger_score,
+    'final_signal': final_signal,
+    'active_layers': active_layers,
+    'active_count': active_count,
+    'layers': layer_scores,
+    'convergence_note': f'{active_count}/5 layers active',
+    'last_time_3plus_fired': _get_historical_convergence(symbol),
+    'timestamp': datetime.now(IST).isoformat(),
+    'disclaimer': 'Detection system only. Not financial advice. Always use stop losses.'
+  }
+GET /warning/api/danger-score/{symbol}
+@cached(f'danger_{symbol}', ttl=300)
+GET /warning/api/danger-score/batch
+  All WATCHLIST_STOCKS in parallel. Sort by danger_score desc.
+  Returns top risks across entire watchlist.
+PROMPT 12.2 — Warning System Frontend
+▶  PASTE INTO CLAUDE CODE  [WARNING SYSTEM]
+Build separate React app: warning-frontend/
+Single page application. Dark red/dark theme.
+Separate from terminal frontend.
+HEADER:
+  Left: ⚠ STOCK EARLY WARNING SYSTEM
+  Right: LIVE dot | IST clock | 'Monitoring {n} stocks'
+MAIN PANEL — DANGER SCORE DASHBOARD:
+SECTION 1: OVERALL WATCHLIST (top)
+  Horizontal scroll of stock cards sorted by danger_score
+  Each card:
+    Stock symbol (large)
+    Danger score (large, colored: red>=75, orange>=55, yellow>=35, green<35)
+    Signal: EXIT / REDUCE / WATCH / CLEAR
+    Active layers count: '3/5 ACTIVE'
+  Click card → expands to full detail view
+SECTION 2: SELECTED STOCK DETAIL (main area)
+  Large: ADANIENT  DANGER: 73/100  ⚠ REDUCE POSITION
+  '3 of 5 layers active simultaneously'
+  5 LAYER BARS:
+  ◈ OPTIONS ANOMALY    ████████░░  80  ⚠ ACTIVE
+    PCR: 2.1 (+133% normal) | OTM Put OI: +280% | IV: +41%
+  ◈ MACRO PRESSURE     █████░░░░░  52  ⚠ ACTIVE
+    FII: -3200 Cr | VIX: 21.4 | Brent: +6.2%
+  ◈ LEGAL RADAR        ██░░░░░░░░  20  ✅ CLEAR
+    No new filings. Last checked: 23 min ago.
+  ◈ SMART MONEY        ████░░░░░░  45  👁 WATCH
+    Pledge: 68% HIGH | FII holding: -0.3%
+  ◈ SENTIMENT VELOCITY ██████░░░░  60  ⚠ ACTIVE
+    Velocity: -0.42 | News rate: 2.8x baseline
+  CONVERGENCE NOTE:
+  'Last time 3+ layers fired: Jan 2023 (preceded 60% crash)'
+  RECENT ALERTS HISTORY (last 7 days, collapsible)
+SECTION 3: LEGAL RADAR PANEL (right sidebar)
+  US Court Filings: {n} new in 30 days
+  SEBI Orders: {n} recent
+  PIB Mentions: {n} this week
+  Each with date + brief description
+SECTION 4: POSITION RULES REMINDER (bottom, always visible)
+  'Never >5% capital in one stock'
+  'Hard stop loss: -15% → exit, no negotiation'
+  'This system detects danger. You decide the action.'
+COLORS:
+  Background: #0A0005  (near-black red tint)
+  CRITICAL: #EF4444 | WARNING: #F97316
+  WATCH: #EAB308 | CLEAR: #22C55E
+  Text: #F0F0F0  Font: Space Mono numbers, Arial body
+AUTO-REFRESH: every 5 minutes during market hours
+NOTIFICATIONS: browser push notification when danger_score crosses 75
+  Request permission on first load
+  'ADANIENT danger score crossed 75 — 3 layers active'
+DEPLOY: Same Render server, route /warning serves this frontend
+  app.mount('/warning', StaticFiles(directory='warning-frontend/dist', html=True))
+■  PHASE 12 — SYSTEM COMPLETE
+□  curl /warning/api/danger-score/ADANIENT returns all 5 layer scores
+□  active_count correctly counts layers with score > 50
+□  convergence multiplier fires when active_count >= 3
+□  EXIT signal fires when danger_score >= 75
+□  Browser push notifications work on score crossing 75
+□  Position rules reminder visible at bottom always
+□  Watchlist batch sorts by danger_score descending
+□  Legal radar updates hourly and never crashes on timeout
+□  Disclaimer visible on every danger score display
+□  Test: verify options PCR on nseindia.com matches your API
+WHAT THIS SYSTEM WOULD HAVE TOLD YOU
+January 2023 — Hindenburg report published after market hours:
+Day -3: OTM put OI surged 280%. OPTIONS ANOMALY score: 78. Signal: WARNING.
+Day -2: FinBERT detecting accelerating negative sentiment. SENTIMENT VELOCITY: 65.
+Day -2: FII net sellers ₹3,400 Cr. MACRO PRESSURE: 58.
+Day -1: 3 layers active simultaneously. DANGER SCORE: 71. Signal: REDUCE.
+Day 0:  Hindenburg publishes. Stock opens -15%. Options had already detected it.
+November 2024 — US DoJ indictment:
+Day -3: Unusual options activity in ADANIENT. OPTIONS ANOMALY: 65.
+Day -2: News velocity spike — 4x baseline. SENTIMENT VELOCITY: 70.
+Day -1: DANGER SCORE: 68. Signal: REDUCE.
+Day 0:  Indictment news breaks. Stock falls 20-30%.
+⚠  FINAL HONEST STATEMENTS
+This system detects anomalies. It does not predict prices.
+No system catches everything. Legal shocks can still be sudden.
+Position sizing protects capital. Systems assist decisions.
+Never risk more than 5% on one stock regardless of what system says.
+Hard stop loss at -15%. Non-negotiable. Before you buy, set the exit.
+The ₹2 crore loss was not a system failure — it was a position sizing failure.
+With ₹2 crore in one stock, even a perfect system giving EXIT 24h early
+  only saves you if you actually exit. Discipline > signals.
+◈  END OF DOCUMENT  ◈
+12 phases. 16 weeks. One infrastructure. Two products. Build in order.

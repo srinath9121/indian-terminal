@@ -14,3 +14,7 @@ pydantic
 nse
 websockets
 PyPDF2
+slowapi
+joblib
+scikit-learn
+lightgbm

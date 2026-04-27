@@ -1,239 +1,296 @@
 import { useState, useEffect, useMemo } from 'react';
-import { AreaChart, Area, ResponsiveContainer, LineChart, Line, YAxis } from 'recharts';
+import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 import AnimatedValue from '../components/AnimatedValue';
-import { Info, Globe, Activity, Zap, TrendingUp, TrendingDown } from 'lucide-react';
 
 const formatIndianNumber = (value) => {
+  if (value == null) return '--';
   return new Intl.NumberFormat('en-IN', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   }).format(value);
 };
 
-const CommodityCard = ({ item }) => {
-  const isUp = item.direction === 'up';
-  const color = isUp ? '#22C55E' : '#EF4444';
-  const [isUpdating, setIsUpdating] = useState(false);
-
-  useEffect(() => {
-    setIsUpdating(true);
-    const id = setTimeout(() => setIsUpdating(false), 800);
-    return () => clearTimeout(id);
-  }, [item.inr_price]);
-
-  const sparkData = useMemo(() => 
-    (item.sparkline || []).map((v, i) => ({ price: v, index: i })),
-    [item.sparkline]
-  );
-
-  const rsiColor = item.rsi_label === 'OVERBOUGHT' ? '#F59E0B' : item.rsi_label === 'OVERSOLD' ? '#06B6D4' : '#22C55E';
+// ────── RSI BAR COMPONENT ──────
+function RsiBar({ rsi }) {
+  const safeRsi = rsi || 50;
+  
+  let label = 'NEUTRAL';
+  let labelColor = '#FFFFFF';
+  if (safeRsi >= 70) {
+    label = 'OVERBOUGHT';
+    labelColor = '#EAB308';
+  } else if (safeRsi <= 30) {
+    label = 'OVERSOLD';
+    labelColor = '#00D4FF';
+  }
 
   return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
+      <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: '#9CA3AF' }}>
+        14D RSI
+      </span>
+      
+      <div style={{ flex: 1, height: 6, background: '#374151', borderRadius: 3, position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', left: 0, width: '30%', height: '100%', background: '#7F1D1D' }} />
+        <div style={{ position: 'absolute', right: 0, width: '30%', height: '100%', background: '#713F12' }} />
+        {/* Dot */}
+        <div style={{
+          position: 'absolute',
+          left: `${Math.max(0, Math.min(100, safeRsi))}%`,
+          top: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: 8, height: 8,
+          borderRadius: '50%',
+          background: '#FFFFFF',
+          boxShadow: '0 0 4px #FFF'
+        }} />
+      </div>
+
+      <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, fontWeight: 700, color: labelColor }}>
+        {label} {safeRsi.toFixed(1)}
+      </span>
+    </div>
+  );
+}
+
+// ────── COMMODITY CARD ──────
+const CommodityCard = ({ item }) => {
+  const isUp = item.pct_change >= 0;
+  const color = isUp ? '#22C55E' : '#EF4444';
+  
+  return (
     <div style={{
-      background: '#0B0B14',
-      border: `1px solid ${isUpdating ? '#00D4FF' : '#1F2937'}`,
-      borderRadius: 12,
-      padding: 24,
-      position: 'relative',
-      transition: 'all 0.4s ease',
-      boxShadow: isUpdating ? '0 0 15px rgba(0,212,255,0.1)' : 'none'
+      background: '#111827',
+      border: '1px solid #1F2937',
+      borderRadius: 4,
+      padding: '16px 20px',
+      display: 'flex',
+      flexDirection: 'column',
     }}>
-      {/* HEADER */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-        <span style={{ fontFamily: 'var(--font-display)', fontSize: 13, fontWeight: 800, color: '#FFF', letterSpacing: '0.1em' }}>
+      {/* Top Row */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 14, fontWeight: 700, color: '#FFFFFF', textTransform: 'uppercase' }}>
           {item.name}
         </span>
-        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: '#4B5563' }}>
-          {item.unit}
+        <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 10, color: '#6B7280' }}>
+          {item.unit_label || 'INR'}
+        </span>
+        <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: '#6B7280', cursor: 'pointer' }}>
+          [v]
         </span>
       </div>
 
-      {/* PRICE */}
-      <div style={{ marginBottom: 4 }}>
-        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 24, fontWeight: 700, color: '#F3F4F6' }}>
-          ₹{item.inr_price != null ? formatIndianNumber(item.inr_price) : '--'}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: color, fontWeight: 600 }}>
-            {isUp ? '▲' : '▼'} {isUp ? '+' : ''}{item.inr_change != null ? formatIndianNumber(item.inr_change) : '0.00'} ({item.pct_change != null ? (item.pct_change > 0 ? '+' : '') + item.pct_change : '0.00'}%)
-          </span>
-        </div>
+      {/* Price Section */}
+      <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 24, fontWeight: 700, color: '#FFFFFF', marginBottom: 4 }}>
+        ₹<AnimatedValue value={item.price_inr} formatter={formatIndianNumber} />
       </div>
 
-      {/* SPARKLINE */}
-      <div style={{ height: 80, margin: '16px -8px 16px -8px' }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={sparkData}>
-            <Line 
-              type="monotone" 
-              dataKey="price" 
-              stroke={color} 
-              strokeWidth={2} 
-              dot={false}
-              isAnimationActive={true}
-            />
-            <YAxis hide domain={['auto', 'auto']} />
-          </LineChart>
-        </ResponsiveContainer>
+      <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 12, fontWeight: 700, color, marginBottom: 16 }}>
+        {isUp ? '▲' : '▼'} {formatIndianNumber(Math.abs(item.change_inr))} ({isUp ? '+' : ''}{item.pct_change?.toFixed(2)}%)
       </div>
 
-      {/* METRICS */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div>
-          <div style={{ fontSize: 9, color: '#4B5563', letterSpacing: '0.1em', marginBottom: 2 }}>USD PRICE</div>
-          <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: '#9CA3AF' }}>${item.usd_price}</div>
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ fontSize: 9, color: '#4B5563', letterSpacing: '0.1em', marginBottom: 2 }}>DUTY STRUCTURE</div>
-          <div style={{ fontSize: 9, color: '#F59E0B', fontFamily: 'var(--font-display)' }}>{item.duty_note}</div>
-        </div>
+      {/* Sparkline */}
+      <div style={{ height: 80, width: '100%', marginBottom: 16 }}>
+        {item.history && item.history.length > 0 ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={item.history}>
+              <defs>
+                <linearGradient id={`grad-${item.id}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={color} stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor={color} stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <Area 
+                type="monotone" 
+                dataKey="price" 
+                stroke={color} 
+                strokeWidth={2}
+                fillOpacity={1} 
+                fill={`url(#grad-${item.id})`} 
+                isAnimationActive={false}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        ) : (
+          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="skeleton-bar" style={{ height: '60%', width: '80%' }} />
+          </div>
+        )}
       </div>
 
-      {/* RSI BAR */}
-      <div style={{ borderTop: '1px solid #1A1A2E', paddingTop: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <span style={{ fontSize: 9, color: '#4B5563', letterSpacing: '0.05em' }}>14D RSI</span>
-          <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', fontWeight: 700, color: rsiColor }}>
-            {item.rsi14} {item.rsi_label}
-          </span>
-        </div>
-        <div style={{ height: 4, background: '#1A1A2E', borderRadius: 2, position: 'relative', overflow: 'hidden' }}>
-          <div style={{ 
-            position: 'absolute', top: 0, left: 0, height: '100%', width: '30%', background: '#EF4444', opacity: 0.2 
-          }} />
-          <div style={{ 
-            position: 'absolute', top: 0, left: '30%', height: '100%', width: '40%', background: '#22C55E', opacity: 0.2 
-          }} />
-          <div style={{ 
-            position: 'absolute', top: 0, left: '70%', height: '100%', width: '30%', background: '#F59E0B', opacity: 0.2 
-          }} />
-          <div style={{
-            position: 'absolute',
-            top: 0,
-            left: `${item.rsi14 || 50}%`,
-            width: 4,
-            height: 4,
-            background: '#FFF',
-            borderRadius: '50%',
-            transform: 'translateX(-50%)',
-            boxShadow: `0 0 10px #FFF`
-          }} />
-        </div>
+      {/* Volume / OI (greyed out per spec) */}
+      <div style={{
+        fontFamily: "'Space Mono', monospace",
+        fontSize: 10,
+        color: '#4B5563',
+        padding: '6px 0',
+        borderTop: '1px solid #1F2937',
+        borderBottom: '1px solid #1F2937',
+        display: 'flex',
+        justifyContent: 'space-between',
+      }}>
+        <span>Volume: N/A</span>
+        <span>Open Interest: N/A</span>
       </div>
 
-      {/* INFO TOOLTIP ICON */}
-      <div 
-        title={item.india_note}
-        style={{ position: 'absolute', bottom: 12, left: 12, cursor: 'help', opacity: 0.5 }}
-      >
-        <Info size={12} color="#9CA3AF" />
+      {/* RSI Bar */}
+      <RsiBar rsi={item.rsi} />
+
+      {/* India Note */}
+      <div style={{
+        marginTop: 16,
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 6,
+        fontFamily: "'Inter', sans-serif",
+        fontSize: 11,
+        color: '#9CA3AF',
+        fontStyle: 'italic',
+        lineHeight: 1.4,
+      }}>
+        <span style={{ fontSize: 12, marginTop: 1 }}>ℹ️</span>
+        <span>{item.india_note || 'India market impact monitor.'}</span>
+      </div>
+
+      {/* Spacer to push duty note to bottom */}
+      <div style={{ flex: 1 }} />
+
+      {/* Duty Note */}
+      <div style={{
+        marginTop: 12,
+        fontFamily: "'Inter', sans-serif",
+        fontSize: 10,
+        color: '#4B5563',
+      }}>
+        Duty: {item.duty_note || 'Standard import duties apply.'}
       </div>
     </div>
   );
 };
 
+
+// ════════════════════════════════════════════════
+// COMMODITIES PAGE
+// ════════════════════════════════════════════════
 export default function Commodities({ commodityData }) {
-  const [filter, setFilter] = useState('ALL');
-  const [time, setTime] = useState('');
+  const [activeFilter, setActiveFilter] = useState('ALL');
+  const [istTime, setIstTime] = useState('');
 
+  // Clock
   useEffect(() => {
-    setTime(new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
-  }, [commodityData]);
+    const tick = () => {
+      const now = new Date();
+      const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+      const istDate = new Date(utc + (3600000 * 5.5));
+      const hh = String(istDate.getHours()).padStart(2, '0');
+      const mm = String(istDate.getMinutes()).padStart(2, '0');
+      const ss = String(istDate.getSeconds()).padStart(2, '0');
+      setIstTime(`${hh}:${mm}:${ss} IST`);
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
 
-  const filtered = useMemo(() => {
+  // Filter Logic
+  const filteredData = useMemo(() => {
     if (!commodityData) return [];
-    if (filter === 'ALL') return commodityData;
-    return commodityData.filter(c => c.category.toUpperCase().replace('_', ' ') === filter);
-  }, [commodityData, filter]);
+    
+    // Sort array based on design doc requested order roughly, or just display as provided
+    const sorted = [...commodityData];
 
-  const categories = ['ALL', 'PRECIOUS', 'ENERGY', 'BASE METALS'];
-
-  if (!commodityData) {
-    return (
-      <div style={{ height: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <div className="live-dot-amber" style={{ marginBottom: 16 }} />
-        <div style={{ fontFamily: 'var(--font-mono)', color: '#555B66', fontSize: 12 }}>SYNCING WITH GLOBAL FUTURES EXCHANGES...</div>
-      </div>
-    );
-  }
+    if (activeFilter === 'ALL') return sorted;
+    
+    return sorted.filter(item => {
+      if (activeFilter === 'PRECIOUS' && ['gold', 'silver', 'platinum', 'palladium'].includes(item.id)) return true;
+      if (activeFilter === 'ENERGY' && ['brent', 'wti', 'nat_gas'].includes(item.id)) return true;
+      if (activeFilter === 'BASE METALS' && ['copper', 'aluminium', 'zinc', 'nickel', 'lead'].includes(item.id)) return true;
+      return false;
+    });
+  }, [commodityData, activeFilter]);
 
   return (
-    <div className="fade-in" style={{ padding: '24px 32px', maxWidth: 1400, margin: '0 auto' }}>
-      {/* HEADER */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: 28, color: '#FFF', margin: 0, fontWeight: 900, letterSpacing: '0.05em' }}>
+    <div style={{ padding: '0 24px 80px 24px', maxWidth: 1600, margin: '0 auto' }}>
+      
+      {/* ══ HEADER BAR ══ */}
+      <div style={{ padding: '24px 0 16px 0', borderBottom: '1px solid #1F2937', marginBottom: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <h1 style={{ fontFamily: "'Space Mono', monospace", fontSize: 18, fontWeight: 700, color: '#FFFFFF', margin: 0 }}>
             COMMODITY TRACKER
           </h1>
-          <p style={{ fontSize: 11, color: '#8892A0', margin: '4px 0 0 0' }}>
-            Prices in Indian Rupees (₹) · Source: CMX/ICE via yfinance
-          </p>
-        </div>
-        
-        <div style={{ textAlign: 'right' }}>
-          <div style={{ display: 'flex', gap: 8, background: '#0D0D1A', padding: 4, borderRadius: 8, border: '1px solid #1A1A2E', marginBottom: 12 }}>
+          <div style={{ display: 'flex', gap: 6 }}>
             {['1D', '1W', '1M'].map(tf => (
-              <button
-                key={tf}
-                disabled={tf !== '1D'}
-                style={{
-                  background: tf === '1D' ? 'rgba(0,212,255,0.05)' : 'transparent',
-                  color: tf === '1D' ? '#00FFDD' : '#374151',
-                  border: 'none',
-                  borderBottom: tf === '1D' ? '1px solid #00FFDD' : 'none',
-                  padding: '4px 12px',
-                  borderRadius: 4,
-                  fontSize: 10,
-                  fontFamily: 'var(--font-mono)',
-                  cursor: tf === '1D' ? 'pointer' : 'not-allowed'
-                }}
-              >
+              <div key={tf} style={{
+                padding: '4px 8px',
+                background: tf === '1D' ? '#00D4FF20' : 'transparent',
+                color: tf === '1D' ? '#00D4FF' : '#4B5563',
+                border: `1px solid ${tf === '1D' ? '#00D4FF' : '#1F2937'}`,
+                borderRadius: 4,
+                fontFamily: "'Space Mono', monospace",
+                fontSize: 10,
+                fontWeight: 700,
+              }}>
                 {tf}
-              </button>
+              </div>
             ))}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'flex-end', fontSize: 10, fontFamily: 'var(--font-mono)', color: '#4B5563' }}>
-            Updated: {time} IST <div className="live-dot" style={{ width: 6, height: 6 }} /> LIVE
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 11, color: '#6B7280' }}>
+            Prices in Indian Rupees (Rs.) - Source: CMX/ICE via yfinance
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: '#9CA3AF' }}>
+              Updated: {istTime}
+            </span>
+            <div className="live-dot" style={{ width: 6, height: 6, background: '#22C55E' }} />
+            <span style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: '#22C55E', fontWeight: 700 }}>
+              LIVE
+            </span>
           </div>
         </div>
       </div>
 
-      {/* FILTER TABS */}
-      <div style={{ display: 'flex', gap: 16, marginBottom: 32, borderBottom: '1px solid #1A1A2E' }}>
-        {categories.map(cat => (
+      {/* ══ CATEGORY FILTER TABS ══ */}
+      <div style={{ display: 'flex', gap: 24, marginBottom: 24, borderBottom: '1px solid #1F2937' }}>
+        {['ALL', 'PRECIOUS', 'ENERGY', 'BASE METALS'].map(tab => (
           <button
-            key={cat}
-            onClick={() => setFilter(cat)}
+            key={tab}
+            onClick={() => setActiveFilter(tab)}
             style={{
               background: 'transparent',
               border: 'none',
-              padding: '12px 4px',
-              fontSize: 11,
-              fontFamily: 'var(--font-display)',
+              borderBottom: activeFilter === tab ? '2px solid #00D4FF' : '2px solid transparent',
+              color: activeFilter === tab ? '#FFFFFF' : '#6B7280',
+              fontFamily: "'Space Mono', monospace",
+              fontSize: 12,
               fontWeight: 700,
-              color: filter === cat ? '#FFF' : '#374151',
-              borderBottom: filter === cat ? '2px solid #00FFDD' : '2px solid transparent',
+              padding: '0 0 12px 0',
               cursor: 'pointer',
               transition: 'all 0.2s',
-              letterSpacing: '0.1em'
             }}
           >
-            {cat}
+            {tab}
           </button>
         ))}
       </div>
 
-      {/* GRID */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 24 }}>
-        {filtered.map(item => (
+      {/* ══ COMMODITY CARD GRID ══ */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+        gap: 16,
+      }}>
+        {filteredData.map(item => (
           <CommodityCard key={item.id} item={item} />
         ))}
+        {(!filteredData || filteredData.length === 0) && (
+          <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 40, color: '#6B7280', fontFamily: "'Space Mono', monospace" }}>
+            Loading commodities...
+          </div>
+        )}
       </div>
 
-      {/* FOOTER */}
-      <div style={{ marginTop: 48, padding: 24, borderTop: '1px solid #1A1A2E', color: '#374151', fontSize: 10, textAlign: 'center', fontFamily: 'var(--font-mono)' }}>
-        Source: CMX/ICE/NYM via yfinance | Prices converted to INR using live USD/INR rate
-      </div>
     </div>
   );
 }

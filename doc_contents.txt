@@ -1,0 +1,2224 @@
+=== India_Macro_Terminal_Build_Guide.docx ===
+
+INDIA MACRO TERMINAL
+Complete Build Guide — End to End
+All 9 Phases · Globe Coloring · Font · NSE Fix · ML Pipeline · New Pages · Deployment
+Author: M. Srinath Swamy
+BSc Honours Data Science · Bhavans Vivekananda College, Hyderabad
+April 2026
+
+Current State of the Project
+Before touching any code, here is an honest assessment of what is working, what is broken, and why — based on a full read of your source files.
+What is Working
+React + Vite frontend — builds and serves correctly
+Three-tab navigation: PULSE, GEO MAP, MARKETS
+WebSocket live broadcast loop from FastAPI
+yfinance fallback for index prices (NIFTY, SENSEX, BANKNIFTY, VIX)
+GDELT fetcher with 3-attempt retry — partially working
+FinBERT via HuggingFace Inference API — connected
+LightGBM model skeleton in model.py — structure correct, untrained
+Signal engine hybrid logic (rule-based + ML) — correct design
+Sector heatmap — loads from yfinance sector tickers
+MARKETS page — Top Gainers, Losers, Volume Shockers, Sparklines
+What is Broken and Why
+Issue
+Root Cause
+NSE API shows N/A
+NSE blocks all cloud IPs (Render, AWS, GCP). This is intentional by NSE. Not a bug in your code.
+GTI showing 0
+GDELT API rate-limits under load. Your fetcher retries 3 times but the backoff delay (2s) is too short.
+FII/DII N/A
+Same NSE IP block. The nse_session_manager cannot establish a valid session from a cloud server.
+Globe no country colors
+polygonCapColor in MainGlobe.jsx returns the same flat dark color for every country. One line fix.
+Font looks generic
+Space Mono is a fine font but used inconsistently. Body text falls back to Arial everywhere.
+LightGBM model inactive
+No lgb_model.pkl file exists. model.py loads it only if the file is found. Without it, the engine is 100% rule-based.
+Bottom half of PULSE blank
+FII/DII and GTI panels render empty containers when data is N/A. Layout collapses.
+
+⚠  The NSE block is a hard infrastructure block, not a code bug. Even fixing all your code will not resolve it. The solution is to switch data sources entirely.
+
+Phase 1 — Globe Country Risk Coloring
+Time estimate: 30 minutes. This is a one-file change in MainGlobe.jsx. The fix maps GDELT country_scores to polygon colors.
+What Needs to Change
+Currently your polygonCapColor prop returns the same color for every country:
+// CURRENT — wrong
+polygonCapColor={() => 'rgba(25, 30, 45, 0.4)'}
+
+It needs to look up each country's tension score from GDELT and return the appropriate risk color:
+// FIXED — dynamic risk coloring
+polygonCapColor={(polygon) => {
+  const name = polygon.properties?.ADMIN || polygon.properties?.name || '';
+  const score = countryScores[name] ?? countryScores[polygon.properties?.ISO_A2] ?? null;
+  if (score === null) return 'rgba(20, 25, 40, 0.5)';  // unknown — dark slate
+  if (score >= 75) return 'rgba(255, 68, 68, 0.75)';   // CRITICAL — red
+  if (score >= 50) return 'rgba(255, 140, 0, 0.70)';   // HIGH — orange
+  if (score >= 30) return 'rgba(59, 130, 246, 0.65)';  // MEDIUM — blue
+  return 'rgba(0, 204, 112, 0.50)';                    // LOW — green
+}
+Step-by-Step Instructions
+Step 1 — Update MainGlobe.jsx props
+Open: frontend/src/components/MainGlobe.jsx
+Add countryScores as a prop in the component signature:
+const MainGlobe = ({ gtiValue = 50, onCountryClick, countryScores = {} }) => {
+Step 2 — Replace polygonCapColor
+Find the line with polygonCapColor (around line 90) and replace it entirely:
+polygonCapColor={(polygon) => {
+  const name = polygon.properties?.ADMIN || polygon.properties?.name || '';
+  const isoA2 = polygon.properties?.ISO_A2 || '';
+  const score = countryScores[name] ?? countryScores[isoA2] ?? null;
+  if (score === null) return 'rgba(20, 25, 40, 0.5)';
+  if (score >= 75) return 'rgba(255, 68, 68, 0.75)';
+  if (score >= 50) return 'rgba(255, 140, 0, 0.70)';
+  if (score >= 30) return 'rgba(59, 130, 246, 0.65)';
+  return 'rgba(0, 204, 112, 0.50)';
+}
+Step 3 — Add polygonLabel for hover tooltip
+Add this prop after polygonStrokeColor in the Globe component:
+polygonLabel={(polygon) => {
+  const name = polygon.properties?.ADMIN || polygon.properties?.name || 'Unknown';
+  const score = countryScores[name] ?? null;
+  const level = score === null ? 'No data'
+    : score >= 75 ? 'CRITICAL'
+    : score >= 50 ? 'HIGH'
+    : score >= 30 ? 'MEDIUM' : 'LOW';
+  return `<div style='background:#0D0D1A;border:1px solid #1A1A2E;padding:8px 12px;
+    border-radius:4px;font-family:monospace;font-size:12px;color:#fff'>
+    <b>${name}</b><br/>Risk: ${level}${score !== null ? ' (' + Math.round(score) + ')' : ''}
+    </div>`;
+}
+Step 4 — Pass countryScores from GeoMap.jsx
+Open: frontend/src/pages/GeoMap.jsx
+Find where MainGlobe is rendered and add the countryScores prop:
+// The GDELT API already returns country_scores.
+// gdeltData.country_scores is a dict of { countryName: score }
+
+<MainGlobe
+  gtiValue={gdeltData?.gti || 50}
+  onCountryClick={handleCountryClick}
+  countryScores={gdeltData?.country_scores || {}}   // ADD THIS LINE
+/>
+Step 5 — Add legend to GeoMap.jsx
+Add this component inside GeoMap, placed over the globe in the top-left:
+const RiskLegend = () => (
+  <div style={{
+    position: 'absolute', top: 16, left: 16, zIndex: 10,
+    background: 'rgba(13,13,26,0.85)',
+    border: '1px solid #1A1A2E',
+    borderRadius: 6, padding: '10px 14px',
+  }}>
+    {[
+      { color: 'rgba(255,68,68,0.75)', label: 'CRITICAL  75+' },
+      { color: 'rgba(255,140,0,0.70)', label: 'HIGH       50-74' },
+      { color: 'rgba(59,130,246,0.65)', label: 'MEDIUM  30-49' },
+      { color: 'rgba(0,204,112,0.50)', label: 'LOW        <30' },
+      { color: 'rgba(20,25,40,0.5)', label: 'NO DATA' },
+    ].map(({ color, label }) => (
+      <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+        <div style={{ width: 14, height: 14, borderRadius: 2, background: color }} />
+        <span style={{ fontFamily: 'monospace', fontSize: 10, color: '#8892A0' }}>{label}</span>
+      </div>
+    ))}
+  </div>
+);
+⚠  The GDELT geo_scores API uses ISO country codes (IN, CN, US) but the GeoJSON uses full country names (India, China, United States). The lookup code above handles both. If a country still shows no color, check what key GDELT is returning for it and add it to the IMPACT_MAP in GeoMap.jsx.
+
+Phase 2 — Font Upgrade
+Time estimate: 10 minutes. Your current font stack (Space Mono + Arial) is functional but generic. The fix is to add one premium font pair and apply it consistently.
+Recommended Font Pair
+Role
+Font
+Headings / Logo / Labels
+Syne (Google Fonts) — geometric, distinctive, not overused
+Data / Mono / Tickers
+JetBrains Mono — better than Space Mono for numbers
+Body / Descriptions
+Inter — clean, readable at small sizes
+Step-by-Step Instructions
+Step 1 — Update Google Fonts import in index.css
+Open: frontend/src/index.css
+Replace the existing @import line at the top:
+/* REPLACE THIS: */
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap');
+
+/* WITH THIS: */
+@import url('https://fonts.googleapis.com/css2?
+  family=Syne:wght@400;600;700;800&
+  family=JetBrains+Mono:wght@400;500;700&
+  family=Inter:wght@300;400;500;600&
+  display=swap');
+Step 2 — Update CSS variables in index.css
+Find the :root block and update the font variables:
+:root {
+  /* ... existing color vars ... */
+  --font-display: 'Syne', sans-serif;       /* headings, logo, nav */
+  --font-mono: 'JetBrains Mono', monospace; /* prices, tickers, code */
+  --font-body: 'Inter', sans-serif;          /* descriptions, labels */
+}
+Step 3 — Update App.jsx logo and tab styles
+Open: frontend/src/App.jsx
+In the styles object, update logo and tab fontFamily:
+logo: {
+  fontFamily: "'Syne', sans-serif",  // was Space Mono
+  fontSize: 15,
+  fontWeight: 800,
+  letterSpacing: '0.08em',
+  // ... rest unchanged
+},
+
+tab: (isActive) => ({
+  fontFamily: "'Syne', sans-serif",  // was Space Mono
+  fontSize: 11,
+  fontWeight: 700,
+  letterSpacing: '0.12em',
+  // ... rest unchanged
+}),
+Step 4 — Update price display fonts across Pulse.jsx
+Open: frontend/src/pages/Pulse.jsx
+Any large price numbers should use JetBrains Mono:
+// For all large price values, use:
+fontFamily: "'JetBrains Mono', monospace"
+
+// For card labels and section titles, use:
+fontFamily: "'Syne', sans-serif"
+
+// For descriptions and news ticker, use:
+fontFamily: "'Inter', sans-serif"
+✓  JetBrains Mono renders numbers at equal width — this prevents the price display from jumping left-right as digits change. This is why Bloomberg Terminal uses monospace for all price data.
+
+Phase 3 — Fix NSE API (Switch Data Sources)
+Time estimate: 2-3 hours. This is the most important backend fix. NSE intentionally blocks all cloud server IPs. This is not fixable by changing headers or session logic. You must switch to APIs that permit cloud access.
+Replacement Data Sources
+Data Needed
+Recommended Source
+FII/DII flows
+NSDL FII/FPI data (public PDF) — parse with pdfplumber, or use Investing.com unofficial endpoint
+NSE Nifty movers
+yfinance — already your fallback, make it primary
+Sector indices
+yfinance — already working via SECTOR_TICKERS dict
+FII net buy/sell approximation
+Derive from yfinance: compare large-cap volume vs previous 10-day average
+Real FII data (accurate)
+Upstox API — free tier, allows cloud, provides historical FII data
+Immediate Fix — Make yfinance Primary for Movers
+Step 1 — Edit nse_fetcher.py
+Open: src/nse_fetcher.py
+The current code tries NSE first and falls back to yfinance. Invert this — make yfinance primary and remove the NSE session dependency:
+def fetch(self):
+    """Primary: yfinance. NSE is retired (cloud IP blocked)."""
+    logging.info('Fetching movers via yfinance (primary)')
+    return self._fetch_yfinance_fallback()
+Step 2 — Build FII proxy from yfinance volume data
+Add this method to NSEMoversFetcher in nse_fetcher.py. It approximates institutional flows using large-cap volume patterns:
+def get_fii_proxy(self):
+    """
+    Derives a FII buy/sell signal from large-cap volume vs 20-day avg.
+    High volume + price up = likely institutional buying.
+    High volume + price down = likely institutional selling.
+    This is an approximation only. Not real FII data.
+    """
+    proxy_tickers = ['HDFCBANK.NS', 'RELIANCE.NS', 'INFY.NS', 'TCS.NS', 'ICICIBANK.NS']
+    try:
+        data = yf.download(proxy_tickers, period='25d', progress=False)
+        volume = data['Volume']
+        close = data['Close']
+        avg_vol = volume.iloc[:-5].mean()
+        recent_vol = volume.iloc[-5:].mean()
+        recent_change = (close.iloc[-1] - close.iloc[-5]) / close.iloc[-5] * 100
+        vol_ratio = recent_vol / avg_vol
+        avg_change = recent_change.mean()
+        if vol_ratio.mean() > 1.15 and avg_change > 0.3:
+            return {'signal': 'BUYING', 'confidence': 'MODERATE', 'note': 'Volume proxy'}
+        elif vol_ratio.mean() > 1.15 and avg_change < -0.3:
+            return {'signal': 'SELLING', 'confidence': 'MODERATE', 'note': 'Volume proxy'}
+        return {'signal': 'NEUTRAL', 'confidence': 'LOW', 'note': 'Volume proxy'}
+    except Exception as e:
+        logging.error(f'FII proxy error: {e}')
+        return {'signal': 'N/A', 'confidence': 'NONE', 'note': 'Data unavailable'}
+Step 3 — Update the FII/DII panel in IndiaContextPanels.jsx
+Open: frontend/src/components/IndiaContextPanels.jsx
+Replace the N/A display with the proxy data and add a clear disclaimer:
+// Replace the N/A text with:
+<div style={{ fontSize: 10, color: '#FFB347', marginTop: 4 }}>
+  {fiiData?.note === 'Volume proxy'
+    ? 'Institutional proxy (volume-derived) — real FII data unavailable from cloud'
+    : 'NSE API unavailable — check back later'
+  }
+</div>
+⚠  Do NOT present the volume proxy as real FII data in your UI. It is an approximation. Always show the disclaimer. Academic projects that misrepresent data sources fail peer review.
+
+Phase 4 — Fix GDELT Retry + GTI Stabilization
+Time estimate: 1 hour. The GTI shows 0 because GDELT rate-limits your server and the retry backoff (2 seconds) is not long enough. Also, a GTI of 0 is statistically impossible — it should default to 50 (neutral) when data is unavailable.
+Step-by-Step Instructions
+Step 1 — Increase retry backoff in gdelt_fetcher.py
+Open: src/gdelt_fetcher.py
+Find both retry loops (in fetch_events and fetch_geo_scores). Change the sleep duration:
+# CURRENT (too fast):
+await asyncio.sleep(2 * (attempt + 1))  # 2s, 4s
+
+# REPLACE WITH (exponential backoff):
+await asyncio.sleep(5 * (2 ** attempt))  # 5s, 10s, 20s
+Step 2 — Add jitter to avoid thundering herd
+Add this import at the top of gdelt_fetcher.py if not present:
+import random
+Then update the sleep to include jitter:
+jitter = random.uniform(0, 2)
+await asyncio.sleep(5 * (2 ** attempt) + jitter)
+Step 3 — Fix the GTI default value
+In gdelt_fetcher.py, in the compute_india_gti method, the default when no data is available returns 50.0. This is already correct in your code. However in server.py the GTI is sometimes broadcast as 0. Find where gti is set in the broadcast loop and add a guard:
+# In server.py, wherever gti is broadcast:
+gti_value = gdelt_data.get('gti', 50) if gdelt_data else 50
+gti_value = max(0, min(100, gti_value)) if gti_value else 50
+# Never allow 0 — minimum meaningful value is 5
+gti_value = max(5, gti_value)
+Step 4 — Cache GDELT data longer
+GDELT data does not change minute-by-minute. In server.py, find your cached decorator for the GDELT endpoint and increase the TTL:
+# CURRENT:
+@cached('gdelt_india', ttl=900)  # 15 minutes
+
+# CHANGE TO:
+@cached('gdelt_india', ttl=1800)  # 30 minutes — reduces rate limit hits
+
+Phase 5 — Three New Pages
+You need three new pages added to the React app: COMMODITIES, SIGNALS, and RISK. Each requires both a frontend component and backend API endpoints.
+Step 1 — Add tabs to App.jsx
+Open: frontend/src/App.jsx
+Find the TABS constant at the top and add three new tabs:
+const TABS = ['PULSE', 'GEO MAP', 'MARKETS', 'COMMODITIES', 'SIGNALS', 'RISK'];
+Then in the content section, add the three new page renders:
+import Commodities from './pages/Commodities.jsx';
+import Signals from './pages/Signals.jsx';
+import Risk from './pages/Risk.jsx';
+
+// In the content section, after Markets:
+{activeTab === 'COMMODITIES' && <Commodities liveData={liveData} />}
+{activeTab === 'SIGNALS' && <Signals />}
+{activeTab === 'RISK' && <Risk />}
+Page A — COMMODITIES Page
+Create file: frontend/src/pages/Commodities.jsx
+This page shows Gold, Silver, Copper live India prices with BUY/SELL signal cards. The signal logic derives from price momentum, IMSI score, and RSI approximation using yfinance 30-day data.
+Backend — Add /api/commodities endpoint to server.py
+@app.get('/api/commodities')
+async def get_commodities():
+    """Live India commodity prices with signal recommendations."""
+    tickers = {
+        'GOLD': 'GC=F',       # Gold futures (USD, convert to INR)
+        'SILVER': 'SI=F',     # Silver futures
+        'COPPER': 'HG=F',     # Copper futures
+        'BRENT': 'BZ=F',      # Brent crude
+        'NATGAS': 'NG=F',     # Natural gas
+    }
+    try:
+        data = yf.download(list(tickers.values()), period='30d', progress=False)
+        usd_inr = yf.Ticker('USDINR=X').fast_info['lastPrice']
+        result = {}
+        for name, ticker in tickers.items():
+            closes = data['Close'][ticker].dropna()
+            if len(closes) < 2:
+                continue
+            price_usd = closes.iloc[-1]
+            price_inr = price_usd * usd_inr
+            change_1d = (closes.iloc[-1] - closes.iloc[-2]) / closes.iloc[-2] * 100
+            change_30d = (closes.iloc[-1] - closes.iloc[0]) / closes.iloc[0] * 100
+            # Simple RSI (14-period approximation)
+            delta = closes.diff().dropna()
+            gain = delta.clip(lower=0).rolling(14).mean().iloc[-1]
+            loss = (-delta.clip(upper=0)).rolling(14).mean().iloc[-1]
+            rsi = 100 - (100 / (1 + gain/loss)) if loss != 0 else 50
+            # Signal logic
+            if rsi < 35 and change_30d < -5:
+                signal = 'BUY'; confidence = 78
+            elif rsi > 65 and change_30d > 5:
+                signal = 'SELL'; confidence = 72
+            else:
+                signal = 'HOLD'; confidence = 55
+            result[name] = {
+                'price_inr': round(price_inr, 2),
+                'price_usd': round(price_usd, 2),
+                'change_1d': round(change_1d, 2),
+                'change_30d': round(change_30d, 2),
+                'rsi': round(rsi, 1),
+                'signal': signal,
+                'confidence': confidence,
+            }
+        return result
+    except Exception as e:
+        return {'error': str(e)}
+Frontend — Commodities.jsx structure
+The page renders three sections: price cards at top, signal cards in the middle, and a 30-day sparkline chart row at the bottom.
+// frontend/src/pages/Commodities.jsx
+import { useState, useEffect } from 'react';
+import { LineChart, Line, ResponsiveContainer, Tooltip } from 'recharts';
+
+export default function Commodities({ liveData }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/commodities')
+      .then(r => r.json())
+      .then(d => { setData(d); setLoading(false); })
+      .catch(() => setLoading(false));
+    const id = setInterval(() => {
+      fetch('/api/commodities').then(r => r.json()).then(setData);
+    }, 5 * 60 * 1000);  // refresh every 5 min
+    return () => clearInterval(id);
+  }, []);
+
+  // Render price card, signal card, chart for each commodity
+  // See full component code in Section 5A below
+}
+Page B — SIGNALS Page
+Create file: frontend/src/pages/Signals.jsx
+This page renders the Live Intelligence Feed table (like your Image 1) and the BUY/SELL signal cards (like Image 2). Data comes from your existing signal_engine.py.
+Backend — Add /api/signals endpoint
+@app.get('/api/signals')
+async def get_signals():
+    """Returns structured signal cards for the Signals page."""
+    # Fetch current features
+    prices = await fetch_prices_internal()  # reuse existing price fetch
+    features = compute_features(prices)     # reuse existing feature computation
+    indices = compute_indices(features)     # reuse existing index scoring
+    signal = engine.generate_signal(features, indices)
+    
+    instruments = [
+        {'symbol': 'NIFTY 50', 'type': 'INDEX'},
+        {'symbol': 'BRENT CRUDE', 'type': 'COMMODITY'},
+        {'symbol': 'USD/INR', 'type': 'FX'},
+        {'symbol': 'GOLD', 'type': 'COMMODITY'},
+        {'symbol': 'BANKNIFTY', 'type': 'INDEX'},
+    ]
+    
+    feed = []
+    for inst in instruments:
+        feed.append({
+            'instrument': inst['symbol'],
+            'type': inst['type'],
+            'direction': signal['direction'],
+            'confidence': int(signal['confidence'] * 100),
+            'grade': 'A+' if signal['confidence'] > 0.85 else 'A' if signal['confidence'] > 0.75 else 'B+',
+            'level': signal['level'],
+            'drivers': signal['drivers'][:2],
+        })
+    
+    return {
+        'feed': feed,
+        'imsi': signal['imsi_breakdown'],
+        'timestamp': signal['timestamp'],
+    }
+Frontend — Signals.jsx structure
+// frontend/src/pages/Signals.jsx
+// Two sections:
+// 1. Intelligence Feed — a table with columns: Priority | Instrument | Event | Conf | Grade | Direction
+// 2. Signal Cards — 3 cards side by side: NIFTY (BUY/SELL), USD/INR, BRENT
+//    Each card shows: direction badge, confidence bar, entry/TP/SL/RR
+
+// Entry/TP/SL for index signals — derive from current price:
+// entry = current price
+// TP = entry * 1.015 if BUY, entry * 0.985 if SELL  (1.5% target)
+// SL = entry * 0.990 if BUY, entry * 1.010 if SELL  (1.0% stop)
+// RR = (TP - entry) / (entry - SL)  -- should be ~1.5:1
+
+// IMPORTANT: Always show the disclaimer below signal cards:
+// 'Signals are generated by rule-based + ML model. Not financial advice.'
+Page C — RISK Page
+Create file: frontend/src/pages/Risk.jsx
+This page renders the Global Risk Score gauge (like Image 4) and the Live Event Feed with shock percentages (like Image 3).
+Backend — Add /api/risk endpoint
+@app.get('/api/risk')
+async def get_risk():
+    """Global risk score and event shock feed."""
+    gdelt = cache_get('gdelt_india')
+    events = gdelt.get('events', []) if gdelt else []
+    gti = gdelt.get('gti', 50) if gdelt else 50
+    
+    # Compute shock scores from GDELT tone
+    event_feed = []
+    for evt in events[:8]:
+        tone = evt.get('tone', 0)
+        shock = min(99, int(abs(tone) * 10 + 20))
+        category = categorize_event(evt['title'])  # see below
+        event_feed.append({
+            'title': evt['title'],
+            'domain': evt['domain'],
+            'shock': shock,
+            'category': category,
+            'instrument': map_event_to_instrument(evt),
+        })
+    
+    # Risk score contributing factors
+    factors = {
+        'event_volume_24h': min(100, len(events) * 4),
+        'avg_severity': int(abs(sum(e.get('tone',0) for e in events) / max(len(events),1)) * 10),
+        'gti': gti,
+    }
+    
+    return {
+        'risk_score': int(gti),
+        'risk_label': 'RISK OFF' if gti > 60 else 'NEUTRAL' if gti > 35 else 'RISK ON',
+        'factors': factors,
+        'event_feed': event_feed,
+    }
+
+def categorize_event(title):
+    t = title.lower()
+    if any(w in t for w in ['oil', 'energy', 'opec', 'crude']): return 'ENERGY'
+    if any(w in t for w in ['rate', 'fed', 'rbi', 'inflation']): return 'RATES'
+    if any(w in t for w in ['trade', 'tariff', 'export']): return 'TRADE'
+    if any(w in t for w in ['war', 'military', 'conflict', 'attack']): return 'GEOPOLITICAL'
+    return 'MACRO'
+
+def map_event_to_instrument(evt):
+    title = evt.get('title', '').lower()
+    country = evt.get('country', '')
+    if 'oil' in title or 'crude' in title or 'opec' in title: return 'BRENT'
+    if 'rupee' in title or 'inr' in title or country in ['IN', 'IND']: return 'USD/INR'
+    if 'fed' in title or 'rate' in title: return 'NIFTY 50'
+    if 'gold' in title: return 'GOLD'
+    return 'NIFTY 50'
+
+Phase 6 — XGBoost Shock + Signal Model
+Time estimate: 1-2 days. This replaces the rule-based signal engine with a trained ML model. The LightGBM skeleton already exists in model.py. You need to collect training data and train it.
+Why XGBoost / LightGBM First
+Interpretable — you can see which features drive predictions (SHAP values)
+Fast inference — predicts in milliseconds, suitable for live broadcast
+Works with small datasets — 2-3 years of daily data is enough
+Does not require GPU
+Outperforms LSTM on tabular financial data in most academic benchmarks
+Step 1 — Collect Training Data
+Create file: notebooks/collect_training_data.ipynb
+This notebook pulls historical data for your feature set:
+import yfinance as yf
+import pandas as pd
+import numpy as np
+
+# Fetch 3 years of daily data
+tickers = {
+    'nifty': '^NSEI',
+    'banknifty': '^NSEBANK',
+    'vix': '^INDIAVIX',
+    'oil': 'BZ=F',
+    'gold': 'GC=F',
+    'usdinr': 'USDINR=X',
+}
+
+raw = yf.download(list(tickers.values()), start='2021-01-01', end='2024-12-31')
+closes = raw['Close']
+closes.columns = list(tickers.keys())
+
+# Compute features
+df = pd.DataFrame()
+df['nifty_change'] = closes['nifty'].pct_change() * 100
+df['oil_change'] = closes['oil'].pct_change() * 100
+df['gold_change'] = closes['gold'].pct_change() * 100
+df['vix_change'] = closes['vix'].pct_change() * 100
+df['usd_inr'] = closes['usdinr']
+df['nifty_5d_mom'] = closes['nifty'].pct_change(5) * 100
+df['nifty_20d_mom'] = closes['nifty'].pct_change(20) * 100
+df['oil_20d_mom'] = closes['oil'].pct_change(20) * 100
+df['vix_level'] = closes['vix']
+
+# Target: next day direction
+df['target'] = np.where(closes['nifty'].pct_change().shift(-1) > 0.003, 1,  # BULLISH
+               np.where(closes['nifty'].pct_change().shift(-1) < -0.003, 2,  # BEARISH
+               0))  # NEUTRAL
+
+df.dropna(inplace=True)
+df.to_csv('../data/training_data.csv', index=True)
+print(f'Saved {len(df)} rows of training data')
+Step 2 — Train the Model
+Create file: notebooks/train_model.ipynb
+import pandas as pd
+import lightgbm as lgb
+import joblib
+import numpy as np
+from sklearn.model_selection import TimeSeriesSplit
+from sklearn.metrics import classification_report
+
+df = pd.read_csv('../data/training_data.csv', index_col=0)
+
+FEATURES = ['nifty_change', 'oil_change', 'gold_change', 'vix_change',
+            'usd_inr', 'nifty_5d_mom', 'nifty_20d_mom', 'oil_20d_mom', 'vix_level']
+
+X = df[FEATURES].values
+y = df['target'].values
+
+# Time-series split — NEVER use random split on time series data
+# This is a common mistake that inflates accuracy artificially
+tscv = TimeSeriesSplit(n_splits=5)
+
+params = {
+    'objective': 'multiclass',
+    'num_class': 3,
+    'metric': 'multi_logloss',
+    'verbosity': -1,
+    'boosting_type': 'gbdt',
+    'num_leaves': 31,
+    'learning_rate': 0.05,
+    'feature_fraction': 0.9,
+    'min_child_samples': 20,
+}
+
+# Train on last fold (most recent data) for production model
+for fold, (train_idx, test_idx) in enumerate(tscv.split(X)):
+    X_train, X_test = X[train_idx], X[test_idx]
+    y_train, y_test = y[train_idx], y[test_idx]
+    train_data = lgb.Dataset(X_train, label=y_train)
+    model = lgb.train(params, train_data, num_boost_round=200)
+    preds = np.argmax(model.predict(X_test), axis=1)
+    print(f'Fold {fold+1}:')
+    print(classification_report(y_test, preds, target_names=['NEUTRAL','BULLISH','BEARISH']))
+
+import os
+os.makedirs('../models', exist_ok=True)
+joblib.dump(model, '../models/lgb_model.pkl')
+print('Model saved to models/lgb_model.pkl')
+⚠  Use TimeSeriesSplit — never train_test_split on financial time series. Splitting randomly leaks future data into training and inflates your accuracy score. This is a frequent academic error that invalidates results.
+Step 3 — Update model.py feature list
+After training, update the feature order in src/model.py predict method to match exactly what you trained on:
+features = [
+    feature_dict.get('nifty_change', 0),
+    feature_dict.get('oil_change', 0),
+    feature_dict.get('gold_change', 0),
+    feature_dict.get('vix_change', 0),
+    feature_dict.get('usd_inr', 83.5),
+    feature_dict.get('nifty_5d_mom', 0),
+    feature_dict.get('nifty_20d_mom', 0),
+    feature_dict.get('oil_20d_mom', 0),
+    feature_dict.get('vix_level', 15),
+]
+Step 4 — Copy model to Render
+Add models/lgb_model.pkl to your git repository. Render will deploy it with the app. Add models/ to your .gitignore exclusion list by making sure it is NOT listed:
+# In .gitignore, make sure this line is NOT present:
+# models/
+
+# Also add to requirements.txt if not present:
+lightgbm
+scikit-learn
+joblib
+
+Phase 7 — FinBERT Fine-Tuning on Indian Financial News
+Time estimate: 2-3 days (most of this is data collection). The current setup uses the base FinBERT model from HuggingFace with no fine-tuning. Fine-tuning on Indian financial news will improve sentiment accuracy for India-specific terminology.
+What Fine-Tuning Means Here
+You will take the pre-trained ProsusAI/finbert model and continue training it on labeled examples of Indian financial news headlines. The labels are: positive, negative, neutral.
+⚠  This requires a HuggingFace account with write access and a machine with at least 8GB RAM. Fine-tuning can be done on Google Colab free tier (T4 GPU). Training on CPU will take many hours.
+Step 1 — Collect Indian Financial News Headlines
+Create file: notebooks/collect_news_data.ipynb
+import feedparser
+import pandas as pd
+
+RSS_FEEDS = {
+    'ET_Markets': 'https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms',
+    'Hindu_BL': 'https://www.thehindu.com/business/markets/?service=rss',
+    'Mint': 'https://www.livemint.com/rss/markets',
+    'MoneyControl': 'https://www.moneycontrol.com/rss/business.xml',
+}
+
+headlines = []
+for source, url in RSS_FEEDS.items():
+    feed = feedparser.parse(url)
+    for entry in feed.entries:
+        headlines.append({'source': source, 'title': entry.title, 'label': None})
+
+df = pd.DataFrame(headlines)
+df.to_csv('../data/headlines_unlabeled.csv', index=False)
+print(f'Collected {len(df)} headlines')
+
+# Next step: manually label a sample of 500-1000 headlines
+# label: 0=negative, 1=neutral, 2=positive
+# Focus on market-moving headlines
+sample = df.sample(500, random_state=42)
+sample.to_csv('../data/headlines_to_label.csv', index=False)
+Step 2 — Label the Headlines (Manual Step)
+Open data/headlines_to_label.csv in Excel or Google Sheets. Add a label column with values: negative, neutral, positive. This takes approximately 2-3 hours for 500 headlines. Label based on likely market impact, not subjective sentiment.
+→  Example: "RBI holds rates, signals pause" = neutral. "FII pull Rs 12000 crore in single day" = negative. "NIFTY hits all-time high" = positive.
+Step 3 — Fine-tune on Google Colab
+Create a Colab notebook and run the following. Select Runtime > Change Runtime Type > T4 GPU before running:
+# Install
+!pip install transformers datasets torch -q
+
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments, Trainer
+from datasets import Dataset
+import pandas as pd
+import torch
+
+# Load labeled data
+df = pd.read_csv('headlines_labeled.csv')
+label_map = {'negative': 0, 'neutral': 1, 'positive': 2}
+df['label'] = df['label'].map(label_map)
+df = df.dropna(subset=['label'])
+
+tokenizer = AutoTokenizer.from_pretrained('ProsusAI/finbert')
+model = AutoModelForSequenceClassification.from_pretrained('ProsusAI/finbert')
+
+def tokenize(batch):
+    return tokenizer(batch['title'], truncation=True, padding=True, max_length=128)
+
+dataset = Dataset.from_pandas(df[['title','label']]).train_test_split(test_size=0.15)
+tokenized = dataset.map(tokenize, batched=True)
+
+args = TrainingArguments(
+    output_dir='./finbert-india',
+    num_train_epochs=4,
+    per_device_train_batch_size=16,
+    per_device_eval_batch_size=16,
+    evaluation_strategy='epoch',
+    save_strategy='epoch',
+    load_best_model_at_end=True,
+    logging_steps=20,
+)
+
+trainer = Trainer(model=model, args=args,
+    train_dataset=tokenized['train'],
+    eval_dataset=tokenized['test'])
+
+trainer.train()
+model.save_pretrained('./finbert-india-final')
+tokenizer.save_pretrained('./finbert-india-final')
+# Then push to HuggingFace Hub or download and host locally
+Step 4 — Update nlp_pipeline.py to use fine-tuned model
+Once you upload the fine-tuned model to HuggingFace Hub (as srinath44/finbert-india), update the model URL in server.py:
+# CURRENT:
+FINBERT_URL = 'https://api-inference.huggingface.co/models/ProsusAI/finbert'
+
+# AFTER FINE-TUNING (replace with your actual model name):
+FINBERT_URL = 'https://api-inference.huggingface.co/models/srinath44/finbert-india'
+
+Phase 8 — Redis Cache + PostgreSQL Signal History
+Time estimate: 1-2 days. Currently your app uses in-memory Python dicts for caching. This is fine for the free tier but means all cached data is lost on every restart. Adding Redis and PostgreSQL makes the app more robust and enables signal history for the backtester.
+Why This Matters
+In-memory cache is lost on every Render cold start (~50 second delay)
+PostgreSQL stores signal history enabling the backtester in Phase 9
+Redis makes repeated API calls instant instead of waiting for yfinance
+Setup — Add to requirements.txt
+redis
+aioredis
+asyncpg
+sqlalchemy[asyncio]
+alembic
+Step 1 — Provision Redis and PostgreSQL on Render
+Go to dashboard.render.com
+Click New > Redis — select free tier
+Copy the internal Redis URL
+Click New > PostgreSQL — select free tier
+Copy the internal Database URL
+Go to your web service > Environment > Add environment variables:
+REDIS_URL=redis://your-redis-internal-url
+DATABASE_URL=postgresql+asyncpg://your-db-url
+Step 2 — Create database schema
+Create file: src/database.py
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy import Column, Integer, String, Float, DateTime, Text
+import os
+from datetime import datetime
+
+DATABASE_URL = os.getenv('DATABASE_URL', 'sqlite+aiosqlite:///./terminal.db')
+engine = create_async_engine(DATABASE_URL)
+AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+Base = declarative_base()
+
+class SignalRecord(Base):
+    __tablename__ = 'signals'
+    id = Column(Integer, primary_key=True)
+    timestamp = Column(DateTime, default=datetime.utcnow)
+    instrument = Column(String(50))
+    direction = Column(String(10))
+    confidence = Column(Float)
+    level = Column(String(20))
+    imsi_score = Column(Float)
+    gti = Column(Float)
+    drivers = Column(Text)
+    actual_next_day = Column(Float, nullable=True)  # filled by backtester
+
+async def init_db():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+Step 3 — Replace in-memory cache with Redis in server.py
+import aioredis
+import json
+
+redis_client = None
+
+@app.on_event('startup')
+async def startup():
+    global redis_client
+    redis_url = os.getenv('REDIS_URL')
+    if redis_url:
+        redis_client = await aioredis.from_url(redis_url)
+    await init_db()
+
+async def redis_get(key):
+    if not redis_client: return cache_get(key)  # fallback to in-memory
+    val = await redis_client.get(key)
+    return json.loads(val) if val else None
+
+async def redis_set(key, value, ttl=900):
+    if not redis_client: cache_set(key, value, ttl); return
+    await redis_client.setex(key, ttl, json.dumps(value, default=str))
+
+Phase 9 — Backtesting Module + Production Deployment
+Time estimate: 1-2 days for backtester, 2-3 hours for deployment upgrade.
+Part A — Backtesting Module
+The backtester evaluates how accurate your signal engine has been historically. It compares each generated signal against what the market actually did the next day.
+Step 1 — Create src/backtester.py
+import yfinance as yf
+import pandas as pd
+import numpy as np
+from datetime import datetime, timedelta
+
+class Backtester:
+    """
+    Runs the signal engine against historical data and
+    computes accuracy, win rate, and risk-reward statistics.
+    """
+    def __init__(self, signal_engine):
+        self.engine = signal_engine
+
+    def run(self, start_date='2023-01-01', end_date=None):
+        if end_date is None:
+            end_date = datetime.today().strftime('%Y-%m-%d')
+        
+        tickers = ['^NSEI', 'BZ=F', 'GC=F', '^INDIAVIX', 'USDINR=X']
+        data = yf.download(tickers, start=start_date, end=end_date)
+        closes = data['Close']
+        closes.columns = ['nifty', 'oil', 'gold', 'vix', 'usdinr']
+        closes.dropna(inplace=True)
+        
+        results = []
+        for i in range(20, len(closes) - 1):
+            row = closes.iloc[i]
+            prev = closes.iloc[i-1]
+            features = {
+                'nifty_change': (row.nifty - prev.nifty) / prev.nifty * 100,
+                'oil_change': (row.oil - prev.oil) / prev.oil * 100,
+                'gold_change': (row.gold - prev.gold) / prev.gold * 100,
+                'vix_change': (row.vix - prev.vix) / prev.vix * 100,
+                'usd_inr': row.usdinr,
+                'nifty_5d_mom': (row.nifty - closes.iloc[i-5].nifty) / closes.iloc[i-5].nifty * 100,
+                'nifty_20d_mom': (row.nifty - closes.iloc[i-20].nifty) / closes.iloc[i-20].nifty * 100,
+                'oil_20d_mom': (row.oil - closes.iloc[i-20].oil) / closes.iloc[i-20].oil * 100,
+                'vix_level': row.vix,
+                'bullish_count': 0, 'bearish_count': 0,
+                'geo_high_count': 0, 'avg_severity': 0,
+                'oil_risk_count': 0, 'rbi_policy_count': 0,
+                'fii_proxy': 'neutral',
+            }
+            from indices import compute_composite
+            indices = compute_composite(features)
+            signal = self.engine.generate_signal(features, indices)
+            
+            next_return = (closes.iloc[i+1].nifty - row.nifty) / row.nifty * 100
+            actual = 'BULLISH' if next_return > 0.3 else 'BEARISH' if next_return < -0.3 else 'NEUTRAL'
+            
+            results.append({
+                'date': closes.index[i],
+                'signal': signal['direction'],
+                'confidence': signal['confidence'],
+                'actual': actual,
+                'next_return': next_return,
+                'correct': signal['direction'] == actual,
+            })
+        
+        df = pd.DataFrame(results)
+        directional = df[df['signal'] != 'NEUTRAL']
+        print(f'Total signals: {len(df)}')
+        print(f'Directional signals: {len(directional)}')
+        print(f'Win rate: {directional["correct"].mean()*100:.1f}%')
+        print(f'Average return on signal days: {directional["next_return"].mean():.2f}%')
+        return df
+Step 2 — Add /api/backtest endpoint
+@app.get('/api/backtest')
+async def run_backtest():
+    """Runs backtester and returns summary stats."""
+    bt = Backtester(engine)
+    df = bt.run(start_date='2023-01-01')
+    directional = df[df['signal'] != 'NEUTRAL']
+    return {
+        'total_signals': len(df),
+        'directional_signals': len(directional),
+        'win_rate': round(directional['correct'].mean() * 100, 1),
+        'avg_return': round(directional['next_return'].mean(), 2),
+        'best_signal': df.loc[df['next_return'].idxmax(), ['date','signal','next_return']].to_dict(),
+        'worst_signal': df.loc[df['next_return'].idxmin(), ['date','signal','next_return']].to_dict(),
+    }
+Part B — Production Deployment
+Option 1 — Upgrade Render (Recommended)
+The free tier causes ~50 second cold starts. Upgrading to Render Starter ($7/month) eliminates cold starts and gives 512MB RAM (enough for LightGBM inference).
+Go to dashboard.render.com > your web service > Settings
+Change Instance Type from Free to Starter
+Enable Always On
+Redeploy
+Option 2 — Migrate to Railway
+Railway is often cheaper for always-on Python services. It supports persistent processes and has better cold start characteristics.
+# railway.json (create in project root)
+{
+  "build": {
+    "builder": "NIXPACKS"
+  },
+  "deploy": {
+    "startCommand": "python src/server.py",
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 3
+  }
+}
+GitHub Actions CI/CD
+Create file: .github/workflows/deploy.yml
+name: Deploy to Render
+on:
+  push:
+    branches: [main]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build frontend
+        run: cd frontend && npm install && npm run build
+      - name: Trigger Render deploy
+        run: |
+          curl -X POST ${{ secrets.RENDER_DEPLOY_HOOK }}
+Add RENDER_DEPLOY_HOOK to your GitHub repository secrets. Get the deploy hook URL from Render dashboard > your service > Settings > Deploy Hook.
+Environment Variables Checklist
+Make sure all of these are set in your Render environment:
+HUGGINGFACE_API_TOKEN=hf_...
+REDIS_URL=redis://...          # After Phase 8
+DATABASE_URL=postgresql://...  # After Phase 8
+PORT=8080
+
+Execution Order — Anti-Gravity Build Plan
+Do these in strict order. Each phase builds on the previous one. Do not skip phases.
+#
+What
+File / Location
+Effort
+1
+Globe country coloring
+frontend/src/components/MainGlobe.jsx + GeoMap.jsx
+30 min
+2
+Font upgrade
+frontend/src/index.css + App.jsx + Pulse.jsx
+10 min
+3
+NSE fix + yfinance primary + FII proxy
+src/nse_fetcher.py + IndiaContextPanels.jsx
+2-3 hrs
+4
+GDELT retry backoff + GTI stabilization
+src/gdelt_fetcher.py + src/server.py
+1 hr
+5
+Three new pages (COMMODITIES, SIGNALS, RISK)
+src/server.py + 3 new .jsx files
+6-8 hrs
+6
+Collect data + train LightGBM model
+notebooks/ + src/model.py
+1-2 days
+7
+FinBERT fine-tuning
+Google Colab + src/nlp_pipeline.py
+2-3 days
+8
+Redis + PostgreSQL integration
+src/server.py + src/database.py
+1-2 days
+9
+Backtester + production deployment
+src/backtester.py + Render/Railway upgrade
+1-2 days
+
+Total estimated time to complete all 9 phases: 2-3 weeks of part-time work.
+
+Honest Caveats and Known Limitations
+This is a student project and it should be represented accurately. Here are the known limitations that should be disclosed in your README and any presentation.
+Data Limitations
+FII/DII data is a volume-derived proxy, not real institutional flow data. Real FII data requires NSDL subscription or Upstox API integration.
+GDELT processes news articles, not primary intelligence sources. Its country_scores can be noisy and lag real-world events by hours.
+yfinance data has a 15-minute delay for NSE instruments during market hours. It is not tick-level or even 1-minute data.
+The model is trained on index-level price data only. It does not account for earnings surprises, policy announcements not in news, or microstructure effects.
+Model Limitations
+A win rate above 55% on directional signals is good for this type of model. Do not expect 70%+ accuracy. Markets are hard to predict.
+The model is trained on 2021-2024 data which includes COVID recovery, rate hike cycle, and geopolitical shocks. Future market regimes may differ.
+FinBERT fine-tuning on 500 headlines is minimal. A production NLP system would use 10,000+ labeled examples.
+What This Project Is
+✓  A real-time macro intelligence dashboard that aggregates public data sources into a unified view for Indian equity investors.
+✓  A demonstration of full-stack ML integration: data ingestion, feature engineering, model training, API serving, WebSocket broadcasting, and frontend visualization.
+✓  A genuine BSc project with real live data, real ML models, and real deployment on public infrastructure.
+What This Project Is Not
+⚠  Not a trading bot. Signals are informational only and should never be acted upon without independent analysis.
+⚠  Not a Bloomberg Terminal. Data freshness, accuracy, and coverage are significantly limited compared to professional data providers.
+⚠  Not production-grade financial infrastructure. It lacks the redundancy, latency guarantees, and regulatory compliance required for real trading systems.
+
+— End of Document —
+India Macro Terminal · M. Srinath Swamy · April 2026
+
+=== india_macro_terminal_FULL.docx ===
+
+◈  INDIA MACRO TERMINAL  ◈
+COMPLETE END-TO-END BUILD DOCUMENT
+6 Phases  ·  9 Weeks  ·  Full Pipeline
+Anti-Gravity Prompt Stack for Claude Code
+v2.0  —  April 2026
+
+
+OVERVIEW
+Six phases, nine weeks. Each phase depends on the previous one being fully working and deployed. Do not skip ahead.
+
+PHASE
+WEEK
+NAME
+OUTCOME
+1
+1–2
+FOUNDATION
+Backend fixed. All endpoints live. Deployed on Render.
+2
+3–4
+LIVE FRONTEND
+3-page React app. WebSocket. 3D globe. GDELT pipeline.
+3
+5
+INTELLIGENCE
+IRS score. Country click panel. FinBERT sentiment.
+4
+6–7
+ML LAYER
+LightGBM volatility. Sector rotation. Options PCR.
+5
+8
+DATA DEPTH
+RBI macro. FII history. Options chain. Macro calendar.
+6
+9
+HARDENING
+Rate limits. Monitoring. Mobile. Error boundaries.
+
+■  ALL FREE DATA SOURCES — NO PAID API NEEDED
+yfinance          →  NSE/BSE prices, indices, VIX, Brent, USD/INR (15-min delay, no key)
+NSE official API  →  Nifty 50 movers, FII/DII flows, options chain (session-based, no key)
+GDELT 2.0         →  Geopolitical events, Goldstein scores (15-min updates, no key)
+HuggingFace       →  FinBERT sentiment inference (free tier, rate-limited, no key)
+RBI press release →  Repo rate scraped from rbi.org.in (changes 6x/year, low frequency)
+data.gov.in       →  CPI inflation (monthly dataset, open API, no key)
+RSS feeds         →  Economic Times, Hindu BusinessLine headlines (no key)
+World GeoJSON     →  Country borders for globe (static file, GitHub CDN)
+
+⚠  READ THIS BEFORE YOU START
+Never skip a phase. Phase 2 assumes Phase 1 is live on Render.
+Paste the FULL prompt block. Do not summarise or paraphrase it to Claude Code.
+After each prompt: read what was built, curl-test it, verify before continuing.
+If Claude Code hallucinates a file or skips a requirement — push back immediately.
+The NSE session breaks frequently. The yfinance fallback handles this. It is not a bug.
+HuggingFace free tier cold-starts after inactivity. First FinBERT call = 20-30s. Normal.
+GDELT has rate limits. Never call it more than once per 15 minutes.
+Render free tier sleeps after 15 min idle. First request after sleep = ~30s. Normal.
+Do not add any paid API. yfinance + NSE + GDELT is sufficient for this entire build.
+
+
+PHASE 1
+WEEKS 1–2
+FOUNDATION
+GOAL: Backend fixed. Real data. Deployed. WebSocket live.
+
+Every bug in the current codebase fixed. Every endpoint returning real data. The app starts without crashing and is accessible on a public Render URL.
+
+What Is Currently Broken
+BUG
+DESCRIPTION
+STATUS
+Startup crash
+nse_session.py imported but never existed
+❌ CRASH
+Port mismatch
+Hardcoded 8000, Render sets PORT=8080
+❌ CRASH
+Stale prices
+change/direction hardcoded strings, never update
+❌ DEAD
+/api/fii-history
+Returns fake hardcoded dict, never calls fetcher
+❌ DEAD
+/api/market-status
+Always returns MARKET CLOSED regardless of time
+❌ WRONG
+/api/index-sparklines
+Returns {NIFTY:[], SENSEX:[]} always
+❌ DEAD
+No frontend
+StaticFiles mount missing, React dist never served
+❌ DEAD
+cached() broken
+Missing functools.wraps, FastAPI introspection fails
+⚠ FRAGILE
+Vercel KV
+Remote round-trip cache on Render, fails silently
+⚠ WRONG
+Wrong label
+root() says engine: Vercel Serverless
+⚠ WRONG
+
+WEEK 1
+Fix The Backend
+
+PROMPT 1.1 — Create nse_session.py
+▶  PASTE INTO CLAUDE CODE
+Create src/nse_session.py — this file is missing and causes an ImportError crash.
+
+Class NSESessionManager:
+  get_session() → requests.Session
+    Returns a cached session warmed up with NSE cookies.
+    First call: create session, set browser headers, GET nseindia.com
+    to receive session cookies. Cache and return.
+  reset() → None: clears cached session.
+
+Headers: User-Agent Chrome/120, Accept */*, Referer https://www.nseindia.com/
+Wrap warmup GET in try/except — log warning on fail, return session anyway.
+Module-level singleton: nse_session_manager = NSESessionManager()
+Dependencies: requests, logging only.
+
+PROMPT 1.2 — Rewrite server.py
+▶  PASTE INTO CLAUDE CODE
+Rewrite src/server.py completely. Keep FastAPI structure. Fix all bugs below.
+Do not touch nse_fetcher.py.
+
+FIX 1 — PORT:
+  port = int(os.environ.get('PORT', 8080))
+  uvicorn.run(app, host='0.0.0.0', port=port)
+
+FIX 2 — CACHE (replace Vercel KV with in-memory TTL):
+  _store = {}
+  def cache_get(key): check time.monotonic() vs expiry, return val or None
+  def cache_set(key, val, ttl): store (val, time.monotonic() + ttl)
+  @cached decorator: add functools.wraps — it was missing, FastAPI needs it.
+
+FIX 3 — LIVE PRICES (fetch_live_market_data):
+  Download ^NSEI, ^BSESN, ^NSEBANK, BZ=F, USDINR=X, ^INDIAVIX via yfinance
+  period='2d' to get current and previous close
+  For each ticker compute: change=curr-prev, pChange=(change/prev)*100
+  direction: 'up' if change >= 0 else 'down'
+  NEVER hardcode any price, change, or direction value.
+
+FIX 4 — MARKET STATUS (real IST time check):
+  def market_status() → dict:
+    now = datetime.now(pytz.timezone('Asia/Kolkata'))
+    if weekday >= 5: return WEEKEND
+    if 9:00-9:15: return PRE-OPEN SESSION
+    if 9:15-15:30: return MARKET OPEN + minutes remaining
+    else: return MARKET CLOSED
+  /api/market-status must call market_status() — not return a hardcoded string.
+
+FIX 5 — FII ENDPOINT:
+  /api/fii-history must call fetcher.fetch_fii_dii() via run_in_executor.
+  Do not return hardcoded values.
+
+FIX 6 — SPARKLINES (real 30-day history):
+  For NIFTY/SENSEX/BANKNIFTY: yf.Ticker(t).history(period='30d')
+  Return [{date: str, close: float}] per index.
+
+FIX 7 — STATIC FILES:
+  from fastapi.staticfiles import StaticFiles
+  dist = BASE_DIR / 'frontend' / 'dist'
+  if dist.exists(): app.mount('/', StaticFiles(directory=str(dist), html=True))
+  Mount AFTER all API routes.
+
+FIX 8 — WEBSOCKET /ws/live:
+  Accept connections, store in list.
+  Background task every 60s: fetch live data, broadcast to all clients.
+  Payload: {type:'price_update', data:MARKET, timestamp:str}
+  Heartbeat every 30s: {type:'heartbeat', market:market_status()}
+  Remove disconnected clients from list.
+  Start via @app.on_event('startup') asyncio.create_task()
+
+FIX 9 — ROOT ENDPOINT:
+  Return {engine:'Render', version:'3.0', market:market_status()}
+
+PROMPT 1.3 — Update requirements.txt
+▶  PASTE INTO CLAUDE CODE
+Replace requirements.txt with exactly this:
+
+yfinance
+feedparser
+pandas
+numpy
+requests
+python-dateutil
+fastapi
+uvicorn[standard]
+pytz
+beautifulsoup4
+lxml
+httpx
+pydantic
+nse
+websockets
+scikit-learn
+lightgbm
+joblib
+
+PROMPT 1.4 — Fix render.yaml
+▶  PASTE INTO CLAUDE CODE
+Replace render.yaml with exactly this:
+
+services:
+  - type: web
+    name: india-macro-terminal
+    env: python
+    region: singapore
+    plan: free
+    pythonVersion: '3.11.0'
+    buildCommand: >
+      cd frontend && npm install && npm run build && cd ..
+      && pip install -r requirements.txt
+    startCommand: python3 src/server.py
+    healthCheckPath: /api/market-status
+    envVars:
+      - key: PORT
+        value: 8080
+
+Remove KV_REST_API_URL and KV_REST_API_TOKEN — Vercel KV is no longer used.
+
+■  WEEK 1 VERIFICATION — before touching frontend
+□  python src/server.py starts with zero ImportError
+□  curl /api/signals returns real Nifty price (not hardcoded 22450.1)
+□  curl /api/market-status returns correct label for current IST time
+□  curl /api/fii-history returns FII buy/sell values (not empty dict)
+□  curl /api/index-sparklines returns 30 data points per index
+□  curl / returns {engine: 'Render'}
+□  wscat -c ws://localhost:8080/ws/live receives heartbeat within 35s
+□  Pushed to GitHub. Render deploy succeeds. Public URL responds.
+
+WEEK 2
+3-Page Frontend Shell
+
+PROMPT 2.1 — App Shell
+▶  PASTE INTO CLAUDE CODE
+Build frontend/src/App.jsx — main terminal shell.
+
+NAVBAR (48px, #0A0A0F background):
+  LEFT:   ◈ INDIA MACRO TERMINAL in Space Mono, cyan #00D4FF
+  CENTER: [PULSE] [GEO MAP] [MARKETS] tab buttons
+          Active: cyan bottom border + white text
+          Inactive: grey text
+  RIGHT:  IRS badge (fetches /api/india-risk-score, refreshes 10min)
+          LIVE dot (green pulse) | WS status | IST clock (HH:MM:SS, 1s tick)
+
+WEBSOCKET:
+  ws://{window.location.host}/ws/live on mount
+  On price_update: store in state, pass to active page as prop
+  On heartbeat: update market status
+  On disconnect: show RECONNECTING, retry 3s→6s→12s→30s backoff
+
+TAB ROUTING: PULSE (default) | GEO MAP | MARKETS
+TAB SWITCH: 300ms scanline CSS animation before rendering new page
+FONTS: Space Mono (Google Fonts CDN) for mono, Arial for body
+BACKGROUND: #0A0A0F
+
+PROMPT 2.2 — Pulse Page
+▶  PASTE INTO CLAUDE CODE
+Build frontend/src/pages/Pulse.jsx — Page 1.
+Props: { liveData } — WebSocket price_update payload (may be null initially)
+
+SECTION 1 — 6 METRIC CARDS (top row):
+  NIFTY 50 | SENSEX | BANKNIFTY | INDIA VIX | BRENT | USD/INR
+  Data: GET /api/signals on mount + liveData prop updates
+  Each card: name (grey mono) | price (large white mono) | change (green/red) | ▲▼
+  On liveData update: flash card bg yellow → fade to transparent in 800ms
+
+SECTION 2 — THREE PANELS (equal thirds):
+  LEFT — FII/DII (GET /api/fii-dii, 5min refresh):
+    FII Net: green if positive, red if negative
+    DII Net: same coloring
+    Signal label: BULLISH/BEARISH/NEUTRAL
+    Date of data
+
+  CENTER — IRS WIDGET (GET /api/india-risk-score, 10min refresh):
+    Score number large, colored by zone
+    RISK ON/NEUTRAL/RISK OFF badge
+    Semicircular SVG gauge, animated needle
+    4 factor bars: Event Volume | Avg Severity | Market Stress | Keyword Density
+    Each bar: label left | colored bar | score right
+    Gradient zone strip: LOW RISK → MODERATE → ELEVATED → EXTREME
+    Top 3 risk driver headlines with ⚠ icon
+    24H history sparkline (recharts AreaChart, amber, accumulates client-side)
+
+  RIGHT — SECTOR HEATMAP (GET /api/sector-performance, 10min refresh):
+    10 tiles in 2x5 grid, green/red gradient by pChange%
+    Each tile: sector name + pChange%
+
+SECTION 3 — NEWS TICKER (bottom, full width):
+  GET /api/geopolitical-news, 5min refresh
+  Scrolling horizontal marquee: [SOURCE] headline · [SOURCE] headline
+  Colors: bullish=green, bearish=red, neutral=grey
+
+PROMPT 2.3 — GeoMap Page (Week 2: Flat SVG)
+▶  PASTE INTO CLAUDE CODE
+Build frontend/src/pages/GeoMap.jsx — Page 2.
+Week 2 version: FLAT choropleth SVG map. Globe upgrade in Week 4.
+
+Install: npm install react-simple-maps
+Use ComposableMap with WorldMap projection.
+
+DATA: GET /api/gdelt/india-events (404 is OK in Week 2 — show grey + banner)
+If 404: render all countries grey #1A1A2E with banner:
+  'GDELT pipeline not yet active — available in Phase 2'
+
+COUNTRY COLORING (when data available):
+  >= 80: #EF4444 | 60-79: #F97316 | 35-59: #3B82F6 | <35: #16A34A | no data: #1A1A2E
+  India: always pulsing cyan #00D4FF border, 2px
+
+ON HOVER: tooltip with country name + score
+ON CLICK: fire onCountryClick(countryName) — opens right panel (Prompt 5.2)
+
+BOTTOM TICKER: latest 5 GDELT events
+  timestamp | region | description | CRITICAL/HIGH/MEDIUM colored badge
+
+TOP BAR: LIVE dot | Global GTI: {score} | last updated timestamp
+REFRESH: every 15 minutes
+
+PROMPT 2.4 — Markets Page
+▶  PASTE INTO CLAUDE CODE
+Build frontend/src/pages/Markets.jsx — Page 3.
+
+SECTION 1 — THREE MOVERS COLUMNS (GET /api/market/movers, 5min refresh):
+  Col 1 GAINERS (response.gainers): bg #001A00, CHG% bold green
+  Col 2 LOSERS (response.losers): bg #1A0000, CHG% bold red
+  Col 3 VOLUME SHOCKERS (response.volume_shockers): VOLUME col amber
+  Each: SYMBOL | LTP | CHG% | VOLUME | max 6 rows | source badge | timestamp
+  Loading: skeleton grey pulsing rows
+
+SECTION 2 — INDEX SPARKLINES (GET /api/index-sparklines, 5min refresh):
+  3 recharts LineCharts side by side: NIFTY | SENSEX | BANKNIFTY
+  30-day close. Colors: cyan | amber | violet
+  No axes, no grid. Just line + index name + current value + 30d % change
+  Height: 120px
+
+SECTION 3 — MARKET STATUS BAR (GET /api/market-status, 30s poll):
+  Full-width strip. Colored dot | status label | next event text
+  MARKET OPEN: green pulsing dot animation
+
+■  WEEK 2 VERIFICATION
+□  All 3 tabs load without errors in browser console
+□  PULSE shows real Nifty price (not hardcoded) and updates from WebSocket
+□  FII/DII panel shows real data with correct colors
+□  Sector heatmap shows 10 colored tiles with real pChange%
+□  GEO MAP loads (grey map is OK if GDELT not done yet)
+□  MARKETS shows gainers/losers/volume tables with real NSE data
+□  Sparklines show 30 data points (not empty)
+□  Market status bar reflects correct IST time
+□  WebSocket LIVE dot shows green and stays connected
+
+
+PHASE 2
+WEEKS 3–4
+LIVE FRONTEND
+GOAL: WebSocket streaming. Animations. 3D globe. GDELT coloring.
+
+Everything becomes live. Prices animate on change. The flat map becomes a rotating 3D globe. GDELT pipeline feeds real country colors.
+
+WEEK 3
+Live Animations + WebSocket Polish
+
+PROMPT 3.1 — WebSocket Smart Broadcast
+▶  PASTE INTO CLAUDE CODE
+Update src/server.py WebSocket broadcast layer.
+
+SMART INTERVAL:
+  Market open (9:15-15:30 IST): broadcast every 60 seconds
+  Market closed: broadcast every 300 seconds
+
+DIFF-ONLY: cache last broadcast, only send changed fields
+
+PING/PONG: send {type:'ping'} every 25s
+  No pong within 10s → remove client from list
+
+GET /api/ws-stats: {active_connections: int, last_broadcast: str}
+
+ON-DEMAND: if client sends {type:'refresh'}, immediately push fresh data
+to that specific client only.
+
+PROMPT 3.2 — Live Animation System
+▶  PASTE INTO CLAUDE CODE
+Create frontend/src/hooks/useLiveData.js:
+
+const { data, lastUpdate, isLive } = useLiveData(endpoint, wsKey, interval)
+
+  On mount: fetch endpoint immediately via REST
+  Subscribe to WebSocket messages from App context
+  On WS message with matching wsKey: update data
+  If WS disconnected: fall back to polling at interval ms
+  Track lastUpdate and isLive boolean
+
+Create frontend/src/components/AnimatedValue.jsx:
+  Props: { value, prefix, suffix, color }
+  On value change: flash background yellow 600ms → fade
+  Animate number counting up/down via requestAnimationFrame, 400ms ease
+
+Update Pulse.jsx: use AnimatedValue for all metric card prices.
+Update Markets.jsx: flash table rows on data change.
+Add 'Updated Xs ago' live counter to every section.
+
+WEEK 4
+GDELT Pipeline + 3D Globe
+
+PROMPT 4.1 — GDELT Fetcher Backend
+▶  PASTE INTO CLAUDE CODE
+Create src/gdelt_fetcher.py — GDELT 2.0 pipeline. No API key needed.
+
+class GDELTFetcher:
+
+  async fetch_events(max_records=25) → list[dict]
+    URL: http://api.gdeltproject.org/api/v2/doc/doc
+    Params: query='India', mode='artlist', maxrecords=25, format='json'
+    Returns: [{title, url, domain, date, country, tone}]
+
+  async fetch_geo_scores() → dict[str, float]
+    URL: http://api.gdeltproject.org/api/v2/summary/summary
+    Params: d='day', t='summary', output='json'
+    Parse country scores, return {country_code: 0-100 score}
+
+  compute_india_gti(events, geo_scores) → float
+    Relevance weights:
+      India direct → 1.0 | Pakistan/China/Iran → 0.7 | USA/global → 0.5
+    stress per event = max(0, -tone) / 100 * 100
+    GTI = weighted avg of (stress * weight), clamp 0-100
+
+  get_india_impact(country_code) → str
+    Static mapping for key countries (see Prompt 5.2 for full list)
+
+Use httpx async. Retry 3x with 2s backoff. Timeout 10s.
+Log all fetch operations.
+
+PROMPT 4.2 — GDELT Endpoint
+▶  PASTE INTO CLAUDE CODE
+Add to src/server.py:
+
+from gdelt_fetcher import GDELTFetcher
+_gdelt = GDELTFetcher()
+
+@app.get('/api/gdelt/india-events')
+@cached('gdelt', ttl=900)
+async def get_gdelt_events():
+    events = await _gdelt.fetch_events()
+    scores = await _gdelt.fetch_geo_scores()
+    gti = _gdelt.compute_india_gti(events, scores)
+    return {
+      'gti': gti,
+      'gti_label': CRITICAL/ELEVATED/CAUTION/STABLE based on score,
+      'events': events[:10],
+      'country_scores': scores,
+      'updated_at': datetime.now(IST).isoformat()
+    }
+
+Include gti in every WebSocket broadcast (read from cache, don't re-fetch).
+
+PROMPT 4.3 — FinBERT Sentiment
+▶  PASTE INTO CLAUDE CODE
+Add FinBERT sentiment to src/server.py.
+Use HuggingFace free inference — no download, no key.
+
+URL: https://api-inference.huggingface.co/models/ProsusAI/finbert
+Method: POST, body: {'inputs': 'headline text'}
+Response: [[{label: positive/negative/neutral, score: float}]]
+
+async def analyze_sentiment(text: str) → dict:
+  POST via httpx, timeout 5s
+  On 429 or error: return {label:'neutral', score:0.5}
+
+Limit concurrency: _sem = asyncio.Semaphore(2)
+Use async with _sem: before every httpx call.
+
+In fetch_live_market_data(): sentiment-score top 5 headlines in parallel
+  asyncio.gather(*[analyze_sentiment(h) for h in headlines[:5]])
+  Add bias field: positive→bullish, negative→bearish, neutral→neutral
+
+GET /api/sentiment?text=... → {label, score, bias}
+Cache individual results 1 hour.
+
+PROMPT 4.4 — Upgrade to 3D Globe
+▶  PASTE INTO CLAUDE CODE
+Upgrade frontend/src/pages/GeoMap.jsx from flat SVG to Three.js 3D globe.
+Remove react-simple-maps. Use Three.js r128 (CDN available).
+
+CRITICAL THREE.JS r128 RULES:
+  import * as THREE from 'three'
+  Do NOT use OrbitControls — not in r128 CDN, implement drag manually
+  Do NOT use CapsuleGeometry — not in r128, use SphereGeometry instead
+
+GLOBE:
+  SphereGeometry(2, 64, 64)
+  Texture: https://unpkg.com/three-globe/example/img/earth-dark.jpg
+  Background: #000000 + 1500 random white Points (star field)
+
+ATMOSPHERE:
+  Larger sphere radius 2.05, transparent blue, opacity 0.08, BackSide
+
+COUNTRY BORDERS:
+  Load GeoJSON from:
+  https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson
+  Draw each country as THREE.Line on globe surface
+  Color by country_scores from /api/gdelt/india-events:
+    >=80: #EF4444 | 60-79: #F97316 | 35-59: #3B82F6 | <35: #16A34A
+  India border: cyan #00D4FF, always visible
+
+ROTATION:
+  Auto-rotate Y axis: 0.001 rad/frame
+  Mouse drag: manual rotation (mousedown/mousemove)
+  After drag release: resume auto-rotate after 3s
+
+CLICK:
+  Raycaster to detect country
+  Call onCountryClick(countryName) prop
+
+PERF: useRef for renderer/scene. Cancel requestAnimationFrame on unmount.
+Keep bottom ticker and top bar from Week 2 version.
+
+■  PHASE 2 VERIFICATION
+□  Globe rotates smoothly, drag works, resumes auto-rotation
+□  Country colors reflect GDELT scores (not all same color)
+□  India has cyan border on globe
+□  Prices animate with yellow flash on WebSocket update
+□  'Updated Xs ago' counter ticks up on every section
+□  curl /api/gdelt/india-events returns gti as real float (not null)
+□  curl /api/sentiment?text=RBI+cuts+rates returns positive/bullish
+□  News headlines in Pulse have bullish/bearish/neutral colors
+□  WebSocket smart interval: faster during market hours
+
+
+PHASE 3
+WEEK 5
+INTELLIGENCE
+GOAL: IRS score. Country panel. India-specific signals.
+
+The India Risk Score (IRS) replaces the generic GTI gauge. Clicking a country shows India-specific market impact analysis. Signal cards show India asset intelligence.
+
+PROMPT 5.1 — India Risk Score Backend
+▶  PASTE INTO CLAUDE CODE
+Add GET /api/india-risk-score to src/server.py.
+Cache 600s (10 minutes).
+
+FOUR CONTRIBUTING FACTORS:
+
+1. event_volume: GDELT events mentioning India/partners in last 24h
+   Normalize: 0 events→0, 50+ events→100
+
+2. avg_severity: average absolute Goldstein score of India-relevant events
+   severity = max(0, -avg_goldstein) / 10 * 100
+
+3. market_stress: (VIX_current - VIX_20d_avg) / VIX_20d_avg * 100
+   Fetch VIX 20-day history via yfinance. Clamp 0-100.
+
+4. keyword_density: scan last 20 RSS headlines for danger keywords
+   ['sanctions','war','conflict','crisis','strike','tension',
+    'default','recession','crash','selloff','outflow','ban']
+   Score = min(100, count * 8)
+
+IRS = (event_volume*0.30) + (avg_severity*0.25)
+      + (market_stress*0.25) + (keyword_density*0.20)
+Clamp 0-100, round to 1 decimal.
+
+IRS MODE: >=65→RISK OFF | 40-64→NEUTRAL | <40→RISK ON
+ZONE: >=80→EXTREME | 60-79→ELEVATED | 35-59→MODERATE | <35→LOW RISK
+
+RETURN: {irs, mode, zone, factors:{event_volume,avg_severity,
+  market_stress,keyword_density}, top_risk_drivers:[{headline,source}],
+  history:[], updated_at}
+
+Include IRS in WebSocket broadcast payload.
+
+PROMPT 5.2 — Country Click Panel
+▶  PASTE INTO CLAUDE CODE
+Add country click panel to frontend/src/pages/GeoMap.jsx.
+Slides in from RIGHT on globe country click. Width 320px. 300ms ease.
+X button top-right to close.
+
+SECTION 1 — COUNTRY HEADER:
+  Country name large bold | tension score badge (colored by zone)
+
+SECTION 2 — INDIA MARKET IMPACT (title: INDIA MARKET IMPACT, cyan):
+  Static impact text per country:
+  China   → Trade tension. IT sector supply chain. Nifty IT underperform. FII risk-off.
+  Pakistan → Security escalation. Defence PSUs may rally. HAL, BEL, BHEL watch.
+  Iran    → Hormuz risk. India imports 85% crude. Brent spike → RBI tightening.
+             ONGC, BPCL, IOC impact.
+  Russia  → Energy and fertilizer risk. Rupee pressure. GSFC, Chambal watch.
+  USA     → Fed sensitivity. Dollar strength → FII outflows. IT USD revenue positive.
+  Saudi   → OPEC+ output drives Brent. Oil spike = CAD widening = INR weak.
+  Israel  → Middle East escalation. Oil route risk. Gold safe-haven demand rises.
+  Default → Monitor for FII flows, commodity prices, and INR stability spillover.
+
+SECTION 3 — RECENT EVENTS (title: RECENT EVENTS, amber):
+  Filter from /api/gdelt/india-events events where country matches
+  Show max 3: timestamp | short headline
+
+SECTION 4 — INDIA SIGNALS (title: INDIA SIGNALS, green):
+  Static signal cards per country:
+  Iran/Saudi/Russia → BRENT:WATCH | ONGC:WATCH | USDINR:SELL
+  China/Pakistan    → NIFTY IT:SELL | NIFTY:WATCH | GOLD:BUY
+  USA               → NIFTY IT:BUY | USDINR:WATCH
+  Default           → NIFTY:WATCH | GOLD:WATCH
+
+  Each card: [BUY/SELL/WATCH badge] ASSET    CONFIDENCE%
+  Confidence = 100 - tension_score
+  One-line italic reason text
+  NO Entry/TP/SL prices — this is intelligence, not a trading tool.
+  Disclaimer: 'For informational purposes only. Not financial advice.'
+
+ANIMATION: flash panel bg briefly when switching countries without closing.
+
+PROMPT 5.3 — IRS Dashboard Widget
+▶  PASTE INTO CLAUDE CODE
+Add IRS widget to frontend/src/pages/Pulse.jsx.
+Replaces GTI gauge placeholder from Week 2.
+Data: GET /api/india-risk-score, refresh every 10 minutes.
+
+TOP ROW:
+  Left: ● INDIA RISK SCORE (red dot, monospace)
+  Right: RISK ON (green) | NEUTRAL (amber) | RISK OFF (red) badge
+         'Updated Xm ago' below badge
+
+SCORE + GAUGE:
+  Large score number colored by zone:
+    EXTREME >=80: #EF4444 | ELEVATED 60-79: #F97316
+    MODERATE 35-59: #EAB308 | LOW <35: #22C55E
+  '/100' in grey beside it
+  Semicircular SVG gauge, green→red, animated needle
+  Labels: 0 left | 50 center | 100 right
+
+24H HISTORY SPARKLINE:
+  Label: 24H HISTORY | right: X readings
+  recharts AreaChart, amber fill, no axes, 80px height
+  Append reading to state every 10min — client-side accumulation
+
+CONTRIBUTING FACTORS (4 bars):
+  Factor label | colored progress bar | score number
+  0-29: green | 30-59: amber | 60-79: orange | 80-100: red
+  Animate bar width on load: 0 → value, 600ms ease
+
+TOP RISK DRIVERS:
+  ⚠ icon + headline, max 3, truncate at 60 chars
+
+GRADIENT ZONE BAR (bottom, full width):
+  CSS gradient: green → yellow → orange → dark
+  Zone labels above: LOW RISK | MODERATE | ELEVATED | EXTREME
+  Dot marker at current IRS value
+  Caption: IRS {value}/100 — {MODE} ACTIVE
+
+■  PHASE 3 VERIFICATION
+□  curl /api/india-risk-score returns all 4 factors with real scores
+□  IRS widget shows on Pulse with animated factor bars
+□  24H history accumulates readings while page stays open
+□  Gradient zone bar shows marker at correct IRS position
+□  Clicking Iran shows Hormuz + ONGC + Brent impact text
+□  Clicking China shows IT sector + FII risk-off signal
+□  Clicking USA shows NIFTY IT BUY + USDINR WATCH
+□  GDELT events filter correctly per country in panel
+□  Panel slides in/out smoothly with 300ms ease
+□  Disclaimer visible on all signal cards
+
+
+PHASE 4
+WEEKS 6–7
+ML LAYER
+GOAL: LightGBM volatility predictor. Sector rotation. Options PCR.
+
+The first real machine learning layer. LightGBM trained on GDELT + VIX history to predict next-day Nifty volatility. Sector rotation signals from GDELT event classification. Nifty options PCR from the NSE session.
+
+⚠  IMPORTANT — READ BEFORE PHASE 4
+Do NOT start Phase 4 until Phase 3 is fully verified and live on Render.
+ML models trained here are simple — LightGBM not deep learning.
+Training data is historical. Models retrain weekly via a cron task.
+All training happens on Render at startup — no GPU needed.
+Model files are stored in src/models/ and loaded at runtime.
+
+WEEK 6
+LightGBM Volatility Model
+
+PROMPT 6.1 — Training Data Pipeline
+▶  PASTE INTO CLAUDE CODE
+Create src/ml/data_builder.py
+
+Function: build_training_data(days=180) → pd.DataFrame
+
+FEATURES (per trading day):
+  From yfinance (^INDIAVIX, ^NSEI, BZ=F, USDINR=X):
+    vix_close, vix_5d_avg, vix_pct_change
+    nifty_return_1d, nifty_return_5d
+    brent_pct_change, usdinr_pct_change
+
+  From GDELT (historical, last 180 days):
+    Use GDELT 2.0 CSV files (free, bulk download):
+    http://data.gdeltproject.org/gdeltv2/lastupdate.txt
+    Count daily India-relevant events
+    Average daily Goldstein score for India
+
+TARGET:
+  nifty_realized_vol_next5d = std(nifty daily returns over next 5 days) * sqrt(252)
+  Binary label: high_vol = 1 if realized_vol > 0.15 else 0
+
+Return DataFrame with features + target, drop NaN rows.
+Save to src/models/training_data.csv
+
+PROMPT 6.2 — Train LightGBM Model
+▶  PASTE INTO CLAUDE CODE
+Create src/ml/train_model.py
+
+from data_builder import build_training_data
+import lightgbm as lgb
+from sklearn.model_selection import TimeSeriesSplit
+from sklearn.metrics import classification_report
+import joblib
+
+TRAINING:
+  df = build_training_data(days=180)
+  features = ['vix_close','vix_5d_avg','vix_pct_change','nifty_return_1d',
+              'nifty_return_5d','brent_pct_change','usdinr_pct_change',
+              'gdelt_event_count','gdelt_avg_goldstein']
+  target = 'high_vol'
+
+  Use TimeSeriesSplit(n_splits=5) — never shuffle time series data.
+  Train LGBMClassifier with these params:
+    n_estimators=100, max_depth=4, learning_rate=0.05,
+    num_leaves=15, random_state=42
+
+  Print classification_report for last fold.
+  Save model: joblib.dump(model, 'src/models/volatility_model.pkl')
+  Save feature names: joblib.dump(features, 'src/models/feature_names.pkl')
+
+IMPORTANT: If training data has fewer than 30 rows, skip training and log warning.
+This prevents crashes when GDELT historical data is thin.
+
+PROMPT 6.3 — Volatility Prediction Endpoint
+▶  PASTE INTO CLAUDE CODE
+Add to src/server.py:
+
+Load model at startup:
+  try:
+    _vol_model = joblib.load('src/models/volatility_model.pkl')
+    _vol_features = joblib.load('src/models/feature_names.pkl')
+    log.info('Volatility model loaded')
+  except FileNotFoundError:
+    _vol_model = None
+    log.warning('No volatility model found — run train_model.py first')
+
+GET /api/volatility-forecast:
+@cached('vol_forecast', ttl=3600)  # 1 hour
+  If model is None: return {available: False, reason: 'Model not trained'}
+  Fetch current feature values (same as training features, today's values)
+  Predict: prob = model.predict_proba(features)[0][1]
+  Return:
+    {
+      available: True,
+      high_vol_probability: round(prob, 3),
+      signal: 'HIGH VOL EXPECTED' if prob > 0.6 else 'LOW VOL EXPECTED',
+      confidence: f'{int(prob*100)}%',
+      horizon: '5 trading days',
+      disclaimer: 'Model output. Not financial advice.',
+      updated_at: str
+    }
+
+Retrain weekly: add a startup check — if training_data.csv is older than 7 days,
+run build_training_data() and train_model.py in a background executor.
+
+WEEK 7
+Sector Rotation + Options PCR
+
+PROMPT 7.1 — Sector Rotation Signals
+▶  PASTE INTO CLAUDE CODE
+Create src/ml/sector_rotation.py
+
+Function: compute_sector_signals(gdelt_events, market_data) → list[dict]
+
+RULE-BASED CLASSIFICATION (no ML needed here):
+  Scan GDELT events for keywords, map to affected India sectors:
+
+  Keywords → Sector → Signal:
+  ['oil','opec','crude','petroleum','hormuz'] → Energy → WATCH
+    if brent_pct_change > 2%: signal = SELL (inflation pressure)
+    if brent_pct_change < -2%: signal = BUY  (input cost relief)
+
+  ['china','tariff','trade war','export ban'] → IT/Tech → SELL
+    Nifty IT supply chain risk
+
+  ['rbi','rate','inflation','monetary'] → Banks → WATCH
+    if rate_hike sentiment: SELL | rate_cut: BUY
+
+  ['war','conflict','military','sanctions'] → Defence PSUs → BUY
+    HAL, BEL, BDL beneficiaries
+
+  ['monsoon','agriculture','drought','flood'] → FMCG/Agri → WATCH
+
+  ['fed','dollar','usd'] → IT → BUY (USD revenue positive)
+
+Return list of:
+  {sector, signal, reason, confidence, triggered_by_keyword}
+
+Add endpoint GET /api/sector-signals:
+@cached('sector_signals', ttl=900)
+  Call compute_sector_signals with current GDELT events and market data
+  Return {signals: [...], updated_at: str}
+
+PROMPT 7.2 — Nifty Options PCR
+▶  PASTE INTO CLAUDE CODE
+Add to src/nse_fetcher.py: method fetch_options_pcr()
+
+The NSE options chain is available via the same session-based approach.
+Endpoint: https://www.nseindia.com/api/option-chain-indices?symbol=NIFTY
+
+def fetch_options_pcr() → dict:
+  session = nse_session_manager.get_session()
+  resp = session.get(
+    'https://www.nseindia.com/api/option-chain-indices?symbol=NIFTY',
+    timeout=10
+  )
+  data = resp.json()
+  records = data['records']['data']
+
+  total_put_oi = sum(r['PE']['openInterest'] for r in records if 'PE' in r)
+  total_call_oi = sum(r['CE']['openInterest'] for r in records if 'CE' in r)
+
+  if total_call_oi == 0: return {}
+  pcr = round(total_put_oi / total_call_oi, 3)
+
+  interpretation:
+    pcr > 1.3 → BULLISH (put heavy = market expects support)
+    pcr < 0.7 → BEARISH (call heavy = market expects resistance)
+    else → NEUTRAL
+
+  return {
+    'pcr': pcr,
+    'signal': interpretation,
+    'total_put_oi': total_put_oi,
+    'total_call_oi': total_call_oi,
+    'timestamp': datetime.now(IST).isoformat()
+  }
+
+Add GET /api/options-pcr to server.py:
+@cached('pcr', ttl=300)
+  loop = asyncio.get_event_loop()
+  fetcher = NSEMoversFetcher()
+  return await loop.run_in_executor(None, fetcher.fetch_options_pcr)
+
+PROMPT 7.3 — Add ML Widgets to Pulse Page
+▶  PASTE INTO CLAUDE CODE
+Add two new widgets to frontend/src/pages/Pulse.jsx.
+
+WIDGET A — VOLATILITY FORECAST (GET /api/volatility-forecast, 1hr refresh):
+  If available=False: show 'Model training in progress...' grey card
+  If available=True:
+    Large probability bar (0-100%)
+    Signal label: HIGH VOL EXPECTED (red) or LOW VOL EXPECTED (green)
+    Confidence % text
+    Horizon: '5 trading days'
+    Disclaimer text in small grey italic
+
+WIDGET B — PCR + SECTOR SIGNALS (side by side):
+  LEFT: Options PCR (GET /api/options-pcr, 5min refresh)
+    Large PCR number
+    Signal: BULLISH/NEUTRAL/BEARISH with color
+    Total put OI vs call OI bars
+
+  RIGHT: Sector Rotation (GET /api/sector-signals, 15min refresh)
+    List of triggered sector signals:
+    [BUY/SELL/WATCH badge] Sector name — reason
+    Max 4 signals, most confident first
+
+■  PHASE 4 VERIFICATION
+□  src/models/volatility_model.pkl exists after training
+□  curl /api/volatility-forecast returns high_vol_probability as float
+□  Volatility widget shows on Pulse with correct color coding
+□  curl /api/sector-signals returns triggered signals based on current GDELT
+□  Sector signals match expected: Iran news → Energy signal
+□  curl /api/options-pcr returns real PCR from NSE options chain
+□  PCR updates every 5 minutes during market hours
+□  TimeSeriesSplit used for training (not random split)
+□  Model retraining runs at startup if data is older than 7 days
+
+
+PHASE 5
+WEEK 8
+DATA DEPTH
+GOAL: RBI macro. FII history trends. Macro calendar.
+
+Add the macro data layer that institutional analysts use: RBI policy data, FII historical flows, and an economic events calendar.
+
+PROMPT 8.1 — RBI Macro Data
+▶  PASTE INTO CLAUDE CODE
+Create src/rbi_fetcher.py
+
+IMPORTANT: RBI DBIE does not have a clean REST API.
+Use these two approaches:
+
+1. REPO RATE — scrape RBI press release page:
+   URL: https://www.rbi.org.in/Scripts/BS_PressReleaseDisplay.aspx
+   Search for 'repo rate' in most recent monetary policy press release
+   Extract the rate number using regex: r'repo rate.*?(\d+\.\d+).*?per cent'
+   This changes at most 6 times per year — cache for 7 days.
+
+2. CPI INFLATION — use data.gov.in open API (no key):
+   URL: https://api.data.gov.in/resource/3b01bcb8-0b14-4abf-b6f2-c1bfd384ba69
+   Params: api-key=579b464db66ec23bdd000001cdd3946e44ce4aab825770792309, format=json
+   (This is a public sample key provided by data.gov.in for testing)
+   Parse latest CPI headline number.
+   Cache for 24 hours.
+
+3. FALLBACK for both: hardcoded known values updated manually
+   repo_rate = 5.25  # as of April 2026 (RBI Feb 2026 meeting)
+   cpi = 3.2        # headline CPI Feb 2026
+   Return fallback with is_live=False flag so frontend can show staleness
+
+Add GET /api/macro/rbi to server.py:
+  {repo_rate, cpi, is_live, last_updated, next_mpc_date}
+  next_mpc_date: hardcode upcoming MPC meeting dates (6 per year)
+  Cache 7 days for repo rate, 24h for CPI.
+
+PROMPT 8.2 — FII Historical Flow Chart
+▶  PASTE INTO CLAUDE CODE
+Add to src/nse_fetcher.py: method fetch_fii_history(days=30) → list
+
+NSE FII/DII endpoint returns last N days of data:
+  https://www.nseindia.com/api/fiidiiTradeReact
+
+Fetch all data, filter for FII category only.
+Return list of {date, net_value} for last 30 days.
+Sort by date ascending.
+
+Add GET /api/fii-history-chart to server.py:
+@cached('fii_history_chart', ttl=900)
+  Return {data: [{date, fii_net, dii_net}], 
+          month_total: sum, trend: 'INFLOW'/'OUTFLOW'}
+
+Add to Markets page: FII Flow History Chart
+  recharts BarChart, 30 days
+  Positive bars: green | Negative bars: red
+  Show total monthly FII net below chart
+  INFLOW label (green) or OUTFLOW label (red)
+
+PROMPT 8.3 — Macro Calendar
+▶  PASTE INTO CLAUDE CODE
+Create src/macro_calendar.py — hardcoded economic events calendar.
+
+HARDCODE the following event types with known dates:
+  MPC_MEETING: RBI Monetary Policy Committee (6 per year)
+  INFLATION_RELEASE: CPI data release (monthly, ~12th of each month)
+  GDP_RELEASE: Quarterly GDP (late month, quarterly)
+  NIFTY_EXPIRY: Monthly Nifty options expiry (last Thursday of month)
+  FII_SETTLEMENT: FII F&O settlement dates
+  UNION_BUDGET: Annual (February 1)
+  US_FED_MEETING: FOMC dates (8 per year, affects FII flows)
+
+Function: get_upcoming_events(days=30) → list[dict]
+  Return events within next 30 days:
+  {event_type, date, label, impact: HIGH/MEDIUM/LOW, india_relevance: str}
+
+Add GET /api/macro-calendar to server.py:
+  {events: [...], next_event: {}, updated_at}
+  No cache needed — it's static data.
+
+Add Macro Calendar strip to Pulse page (between metric cards and panels):
+  Horizontal scrollable row of upcoming events
+  Each event: date badge | event name | impact colored label
+  Next event highlighted with pulsing border
+  Click event: show india_relevance tooltip
+
+■  PHASE 5 VERIFICATION
+□  curl /api/macro/rbi returns repo_rate as float (5.25 or current)
+□  curl /api/macro/rbi includes is_live flag — shows staleness correctly
+□  curl /api/fii-history-chart returns 30 data points
+□  FII bar chart renders on Markets page with correct colors
+□  Monthly total shows INFLOW or OUTFLOW with correct sign
+□  curl /api/macro-calendar returns events sorted by date
+□  Next RBI MPC meeting shows correctly with HIGH impact label
+□  Macro calendar strip scrolls horizontally on Pulse page
+
+
+PHASE 6
+WEEK 9
+PRODUCTION HARDENING
+GOAL: Rate limits. Monitoring. Mobile. Error boundaries.
+
+The difference between a demo and a product. Rate limiting so one user can't kill the server. Error boundaries so one bad API doesn't blank the whole page. Mobile layout so it works on a phone.
+
+PROMPT 9.1 — Backend Rate Limiting + Health
+▶  PASTE INTO CLAUDE CODE
+Add rate limiting and health monitoring to src/server.py.
+
+RATE LIMITING:
+  pip install slowapi
+  from slowapi import Limiter
+  from slowapi.util import get_remote_address
+
+  limiter = Limiter(key_func=get_remote_address)
+  app.state.limiter = limiter
+
+  Apply limits:
+  @limiter.limit('60/minute')  → all /api/* routes
+  @limiter.limit('10/minute')  → /api/gdelt/india-events (GDELT is rate limited)
+  @limiter.limit('5/minute')   → /api/sentiment (FinBERT is slow)
+  No limit on WebSocket /ws/live
+
+  On 429: return {error: 'Rate limit exceeded', retry_after: int}
+
+HEALTH ENDPOINT:
+  GET /health → {
+    status: 'ok',
+    uptime_seconds: int,
+    active_ws_connections: int,
+    cache_keys: int,
+    last_nse_fetch: str,
+    last_gdelt_fetch: str,
+    model_loaded: bool
+  }
+
+STARTUP TIME TRACKING:
+  _start_time = time.monotonic() at module level
+  uptime = time.monotonic() - _start_time
+
+GRACEFUL SHUTDOWN:
+  @app.on_event('shutdown'): close all WebSocket connections cleanly
+
+PROMPT 9.2 — Frontend Error Boundaries
+▶  PASTE INTO CLAUDE CODE
+Add error resilience to the React frontend.
+
+Create frontend/src/components/ErrorBoundary.jsx:
+  Class component (required for React error boundaries)
+  On error: show terminal-style error panel:
+    Dark background, red border
+    '⚠ MODULE ERROR' in red monospace
+    Error message in Courier New
+    Retry button: onClick={() => this.setState({hasError: false})}
+
+Wrap EVERY page component in ErrorBoundary:
+  <ErrorBoundary><Pulse liveData={...} /></ErrorBoundary>
+  <ErrorBoundary><GeoMap /></ErrorBoundary>
+  <ErrorBoundary><Markets /></ErrorBoundary>
+
+Add loading states to every data fetch:
+  isLoading=true on fetch start, false on complete
+  Show skeleton placeholder (grey pulsing bar) when isLoading
+
+Add error states:
+  On fetch failure: show '[SECTION NAME] UNAVAILABLE — retrying in Xs'
+  Auto-retry after 30s
+  Never show blank panels — always show something
+
+PROMPT 9.3 — Mobile Responsive Layout
+▶  PASTE INTO CLAUDE CODE
+Make the frontend mobile-responsive.
+
+BREAKPOINTS:
+  Mobile: < 768px
+  Tablet: 768-1024px
+  Desktop: > 1024px
+
+NAVBAR (mobile):
+  Logo left | hamburger menu right
+  Tabs collapse into hamburger dropdown
+  IRS badge and clock hidden on mobile (space constraint)
+
+PULSE PAGE (mobile):
+  Metric cards: 2 per row (was 6 in a row)
+  Three panels: stack vertically
+  IRS widget: full width
+  Sector heatmap: 2x5 grid stays (already compact)
+  News ticker: stays (already horizontal)
+
+MARKETS PAGE (mobile):
+  Three movers columns: tabs (GAINERS | LOSERS | VOLUME)
+  Only show one at a time on mobile
+  Sparklines: stack vertically, full width each
+
+GEO MAP (mobile):
+  Globe: reduced to 85vw
+  Country click panel: full-screen overlay instead of side panel
+  Close button top-right
+
+Use CSS media queries — no extra libraries.
+Test at 375px (iPhone SE) and 414px (iPhone Plus).
+
+PROMPT 9.4 — Performance Audit
+▶  PASTE INTO CLAUDE CODE
+Final performance pass on both backend and frontend.
+
+BACKEND:
+  Audit all endpoints — any that take > 3s must be pre-warmed on startup.
+  Add startup pre-warming:
+    @app.on_event('startup'):
+      asyncio.create_task(get_signals())        # warm signals cache
+      asyncio.create_task(get_movers())         # warm movers cache
+      asyncio.create_task(get_gdelt_events())   # warm GDELT cache
+  This ensures first user request hits cache, not cold fetch.
+
+  Add response time logging:
+    import time
+    @app.middleware('http')
+    async def log_time(request, call_next):
+      t = time.monotonic()
+      response = await call_next(request)
+      log.info('%s %s %.3fs', request.method, request.url.path,
+               time.monotonic()-t)
+      return response
+
+FRONTEND:
+  Lazy load GeoMap page (heaviest — loads Three.js)
+  const GeoMap = React.lazy(() => import('./pages/GeoMap'))
+  Wrap in <Suspense fallback={<LoadingScreen />}>
+
+  Memoize all chart components:
+  const MemoizedSparkLine = React.memo(SparkLine)
+  Prevents recharts re-rendering on every WebSocket update
+
+  Add Content-Security-Policy header in server.py:
+  app.add_middleware(TrustedHostMiddleware, ...)
+
+■  PHASE 6 VERIFICATION — PRODUCTION READY
+□  curl /health returns all fields including model_loaded and active_ws_connections
+□  Sending 70 requests/minute to /api/signals triggers 429 on excess
+□  Clicking Retry on error boundary restores the section
+□  All sections show skeleton on load, never blank panel
+□  Mobile layout: metric cards 2-per-row at 375px width
+□  GeoMap opens as full overlay panel on mobile click
+□  Movers columns tab correctly on mobile
+□  Startup pre-warming means first request responds in < 500ms
+□  Response time log shows all endpoints < 3s
+□  Render deploy succeeds with zero errors in build log
+
+
+COMPLETE API REFERENCE
+Every endpoint this project exposes. If an endpoint is missing from this list, it should not exist.
+
+ENDPOINT
+METHOD
+CACHE
+DESCRIPTION
+/
+GET
+—
+Health check + market status
+/health
+GET
+—
+Uptime, WS connections, cache status
+/api/signals
+GET
+300s
+Live prices for 6 core assets
+/api/five-numbers
+GET
+—
+MARKET slice of /api/signals
+/api/market-status
+GET
+—
+Real IST-based market open/closed
+/api/market-mood
+GET
+300s
+Macro tone + IMSI score
+/api/market/movers
+GET
+300s
+NSE gainers/losers/volume shockers
+/api/top-movers
+GET
+—
+Alias for /api/market/movers
+/api/sector-performance
+GET
+600s
+10 NSE sector pChange%
+/api/index-sparklines
+GET
+300s
+30-day OHLC for 3 indices
+/api/indices
+GET
+120s
+5 index values with change
+/api/fii-dii
+GET
+900s
+FII/DII net flows + signal
+/api/fii-history
+GET
+—
+Alias for /api/fii-dii
+/api/fii-history-chart
+GET
+900s
+30-day FII net bar chart data
+/api/gdelt/india-events
+GET
+900s
+GDELT events + country scores + GTI
+/api/india-risk-score
+GET
+600s
+IRS with 4 factor breakdown
+/api/volatility-forecast
+GET
+3600s
+LightGBM 5-day vol prediction
+/api/sector-signals
+GET
+900s
+Sector rotation from GDELT keywords
+/api/options-pcr
+GET
+300s
+Nifty options Put/Call ratio
+/api/sentiment
+GET
+3600s
+FinBERT sentiment for ?text= param
+/api/macro/rbi
+GET
+7d
+Repo rate + CPI from RBI
+/api/macro-calendar
+GET
+—
+Upcoming macro events (static)
+/api/geopolitical-news
+GET
+—
+Latest RSS headlines with bias
+/api/ws-stats
+GET
+—
+Active WS connections count
+/api/impact-chain
+GET
+600s
+Macro impact chain (simple)
+/ws/live
+WS
+—
+Live price + IRS broadcast stream
+
+WHAT BREAKS FIRST
+NSE API blocks sessions — yfinance fallback handles this. You will see 'yfinance Fallback' badge. Not a bug.
+HuggingFace cold start — first FinBERT call takes 20-30s after inactivity. All subsequent calls are fast. Normal.
+GDELT empty response — cached() decorator serves last good response. Do not remove the cache.
+Render sleep — free tier sleeps after 15min idle. First post-sleep request = ~30s. Normal.
+NSE session cookie expires — reset() method in NSESessionManager handles re-warmup automatically.
+LightGBM training fails on thin data — train_model.py skips training if < 30 rows. Falls back to unavailable state.
+RBI page structure changes — repo rate scraping breaks if RBI redesigns their press release page. Use fallback hardcoded value.
+
+WHAT NOT TO DO
+Do not add any paid API — Bloomberg, Quandl, Polygon, Alpha Vantage. Free stack is sufficient.
+Do not use localStorage or sessionStorage in React. Not supported in this environment.
+Do not call GDELT more than once per 15 minutes. Rate limit is real.
+Do not put secrets in render.yaml. Use Render dashboard environment variables.
+Do not skip phases. Each phase depends on the previous one being live and verified.
+Do not show Entry/TP/SL prices on signal cards. This is intelligence, not a trading advisory tool.
+Do not use random train/test split on time series. Always use TimeSeriesSplit.
+Do not shuffle time series data before training. Past leaks into future — results will be fake.
+
+◈  END OF DOCUMENT  ◈
+6 phases. 9 weeks. Build it in order. Verify before you move.

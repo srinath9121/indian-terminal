@@ -347,6 +347,190 @@ async def api_sectors():
     except:
         return {"data": []}
 
+# ─────────────────────────────────────────────────────
+# MACRO INTELLIGENCE ENDPOINTS
+# ─────────────────────────────────────────────────────
+from src.macro_fetcher import MacroFetcher
+from src.macro_calendar import get_upcoming_events
+from src.nse_fetcher import fetch_max_pain as _fetch_max_pain
+_macro = MacroFetcher()
+
+@app.get("/api/macro/gst")
+async def api_macro_gst():
+    cached = get_cached("macro_gst")
+    if cached: return cached
+    loop = asyncio.get_event_loop()
+    try:
+        res = await loop.run_in_executor(None, _macro.fetch_gst_revenue)
+        if res: set_cached("macro_gst", res, 86400)  # 24h
+        return res or {}
+    except:
+        return {}
+
+@app.get("/api/macro/power")
+async def api_macro_power():
+    cached = get_cached("macro_power")
+    if cached: return cached
+    loop = asyncio.get_event_loop()
+    try:
+        res = await loop.run_in_executor(None, _macro.fetch_power_demand)
+        if res: set_cached("macro_power", res, 3600)  # 1h
+        return res or {}
+    except:
+        return {}
+
+@app.get("/api/macro/monsoon")
+async def api_macro_monsoon():
+    cached = get_cached("macro_monsoon")
+    if cached: return cached
+    loop = asyncio.get_event_loop()
+    try:
+        res = await loop.run_in_executor(None, _macro.fetch_monsoon_status)
+        if res: set_cached("macro_monsoon", res, 3600)
+        return res or {}
+    except:
+        return {}
+
+@app.get("/api/macro/fii-derivatives")
+async def api_macro_fii_derivatives():
+    cached = get_cached("macro_fii_deriv")
+    if cached: return cached
+    loop = asyncio.get_event_loop()
+    try:
+        res = await loop.run_in_executor(None, _macro.fetch_fii_derivative_positions)
+        if res: set_cached("macro_fii_deriv", res, 900)  # 15min
+        return res or {}
+    except:
+        return {}
+
+@app.get("/api/macro/max-pain")
+async def api_macro_max_pain():
+    cached = get_cached("macro_max_pain")
+    if cached: return cached
+    loop = asyncio.get_event_loop()
+    try:
+        res = await loop.run_in_executor(None, _fetch_max_pain)
+        if res: set_cached("macro_max_pain", res, 300)  # 5min
+        return res or {}
+    except:
+        return {}
+
+@app.get("/api/macro-calendar")
+async def api_macro_calendar():
+    cached = get_cached("macro_calendar")
+    if cached: return cached
+    try:
+        events = get_upcoming_events()
+        set_cached("macro_calendar", events, 3600)
+        return events
+    except:
+        return []
+
+# ─────────────────────────────────────────────────────
+# WARNING SYSTEM API
+# ─────────────────────────────────────────────────────
+from src.options_fetcher import OptionsFetcher
+from src.legal_fetcher import LegalFetcher
+_options_history = {}
+
+@app.get("/warning/api/options/{symbol}")
+async def api_warning_options(symbol: str):
+    cache_key = f'opts_{symbol}'
+    cached = get_cached(cache_key)
+    if cached: return cached
+    
+    loop = asyncio.get_event_loop()
+    fetcher = OptionsFetcher()
+    try:
+        current = await loop.run_in_executor(None, fetcher.fetch_options_chain, symbol)
+    except Exception as e:
+        return {"error": str(e)}
+
+    # Load 14-session history from simple in-memory store
+    history = _options_history.get(symbol, [])
+    history.append(current)
+    if len(history) > 14: history.pop(0)
+    _options_history[symbol] = history
+    
+    anomaly = fetcher.compute_anomaly_score(current, history[:-1])
+    res = {'chain': current, 'anomaly': anomaly}
+    set_cached(cache_key, res, 300)
+    return res
+
+@app.get("/warning/api/legal/{symbol}")
+async def api_warning_legal(symbol: str):
+    cache_key = f'legal_{symbol}'
+    cached = get_cached(cache_key)
+    if cached: return cached
+
+    loop = asyncio.get_event_loop()
+    fetcher = LegalFetcher()
+    try:
+        courtlistener = await loop.run_in_executor(None, fetcher.fetch_courtlistener, symbol)
+    except Exception as e:
+        logger.warning(f"CourtListener fetch error: {e}")
+        courtlistener = []
+    try:
+        sebi = await loop.run_in_executor(None, fetcher.fetch_sebi_orders, symbol)
+    except Exception as e:
+        logger.warning(f"SEBI fetch error: {e}")
+        sebi = []
+
+    all_filings = courtlistener + sebi
+    all_filings.sort(key=lambda x: x.get('date', ''), reverse=True)
+    legal_score = fetcher.compute_legal_score(all_filings)
+    res = {'filings': all_filings, 'legal_score': legal_score, 'symbol': symbol}
+    set_cached(cache_key, res, 3600)  # cache 1 hour
+    return res
+
+@app.get("/warning/api/danger-score/{symbol}")
+async def api_warning_danger_score(symbol: str):
+    # Aggregates all 5 layers into composite score
+    layer_scores = {}
+
+    # Layer 1: Options anomaly
+    opts = get_cached(f'opts_{symbol}')
+    if opts and 'anomaly' in opts:
+        layer_scores['options'] = opts['anomaly']['score']
+    else:
+        layer_scores['options'] = 0
+
+    # Layer 2: Macro pressure (placeholder — future blocks)
+    layer_scores['macro'] = 0
+
+    # Layer 3: Legal radar
+    legal = get_cached(f'legal_{symbol}')
+    if legal and 'legal_score' in legal:
+        layer_scores['legal'] = legal['legal_score']['score']
+    else:
+        layer_scores['legal'] = 0
+
+    # Layer 4 & 5: Smart money + Sentiment (placeholder — future blocks)
+    layer_scores['smart_money'] = 0
+    layer_scores['sentiment'] = 0
+
+    active_layers = sum(1 for v in layer_scores.values() if v > 50)
+    base_score = max(layer_scores.values()) if layer_scores.values() else 0
+    
+    if active_layers == 0:
+        composite = base_score * 0.5
+    elif active_layers == 1:
+        composite = base_score * 0.75
+    elif active_layers == 2:
+        composite = base_score * 0.9
+    else:
+        composite = base_score * 1.2
+        
+    composite = min(100, round(composite))
+    
+    return {
+        "symbol": symbol,
+        "danger_score": composite,
+        "layer_scores": layer_scores,
+        "signal": 'CRITICAL' if composite>75 else 'ACTIVE' if composite>50 else 'WATCH' if composite>25 else 'CLEAR',
+        "timestamp": datetime.now(IST).isoformat()
+    }
+
 # ── Frontend SPA ──
 DIST_DIR = BASE_DIR / "frontend" / "dist"
 logger.info(f"Frontend dist: {DIST_DIR} (exists={DIST_DIR.exists()})")

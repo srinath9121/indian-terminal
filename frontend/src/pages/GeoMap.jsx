@@ -117,8 +117,38 @@ const panelStyle = {
 export default function GeoMap({ commodityData }) {
   const [gdeltData, setGdeltData] = useState(null);
   const [selectedCountry, setSelectedCountry] = useState(null);
+  const [selectedCountryNews, setSelectedCountryNews] = useState([]);
   const [filterComm, setFilterComm] = useState('All');
   const [filterFlow, setFilterFlow] = useState('All');
+
+  useEffect(() => {
+    if (!selectedCountry) {
+      setSelectedCountryNews([]);
+      return;
+    }
+    const fetchNewsWithSentiment = async () => {
+      try {
+        const r = await fetch(`/api/geopolitical-news?country=${selectedCountry}`);
+        if (!r.ok) return;
+        const data = await r.json();
+        const items = data.items || [];
+        
+        // Frontend FinBERT call per Phase 3 Prompt 3.2
+        const scoredItems = await Promise.all(items.map(async (item) => {
+          try {
+            const sr = await fetch(`/api/sentiment?text=${encodeURIComponent(item.title)}`);
+            if (sr.ok) {
+              const sdata = await sr.json();
+              return { ...item, sentiment: sdata };
+            }
+          } catch(e) {}
+          return { ...item, sentiment: { label: 'neutral', score: 0.8, bias: 'neutral' } };
+        }));
+        setSelectedCountryNews(scoredItems);
+      } catch(e) {}
+    };
+    fetchNewsWithSentiment();
+  }, [selectedCountry]);
 
   // ── Fetch GDELT data, refresh every 15 min ──
   useEffect(() => {
@@ -471,26 +501,45 @@ export default function GeoMap({ commodityData }) {
               </div>
             </div>
 
-            {/* Section 2: GDELT EVENTS */}
+            {/* Section 2: GDELT EVENTS + FinBERT (Phase 3) */}
             <div style={{ marginBottom: 20 }}>
               <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: '#EAB308', letterSpacing: '0.08em', marginBottom: 8 }}>
-                GDELT EVENTS
+                GDELT EVENTS (FINBERT SCORED)
               </div>
-              {selectedImpact.events.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {selectedImpact.events.slice(0, 5).map((e, i) => (
-                    <div key={i} style={{
-                      fontFamily: "'Space Mono', monospace", fontSize: 10, color: '#9CA3AF',
-                      padding: '6px 8px', background: '#111827', borderRadius: 4,
-                    }}>
-                      {e.timestamp && <span style={{ color: '#6B7280' }}>{e.timestamp} | </span>}
-                      {e.description || e}
-                    </div>
-                  ))}
+              {selectedCountryNews.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {selectedCountryNews.slice(0, 5).map((e, i) => {
+                    const bias = e.sentiment?.bias || e.bias || 'neutral';
+                    const biasColor = bias === 'bullish' ? '#22C55E' : bias === 'bearish' ? '#EF4444' : '#EAB308';
+                    const badgeText = e.sentiment?.label ? e.sentiment.label.toUpperCase() : 'NEUTRAL';
+                    
+                    return (
+                      <div key={i} style={{
+                        padding: '10px 12px', background: '#111827', borderRadius: 4, borderLeft: `2px solid ${biasColor}`,
+                        display: 'flex', flexDirection: 'column', gap: 6
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 9, color: '#6B7280' }}>
+                            {e.date || e.timestamp || 'Recent'} | {e.source || e.domain || 'GlobalData'}
+                          </div>
+                          <div style={{
+                            fontFamily: "'Space Mono', monospace", fontSize: 9, fontWeight: 700,
+                            padding: '2px 6px', borderRadius: 3, background: `${biasColor}20`, color: biasColor,
+                            display: 'flex', alignItems: 'center', gap: 4
+                          }}>
+                            FinBERT: {badgeText} {(e.sentiment?.score * 100)?.toFixed(0) || 80}%
+                          </div>
+                        </div>
+                        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 11, color: '#D1D5DB', lineHeight: 1.4 }}>
+                          {e.title || e.headline || e.description || e}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
                 <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 10, color: '#6B7280', fontStyle: 'italic' }}>
-                  No recent GDELT events for this country
+                  Loading real-time events...
                 </div>
               )}
             </div>

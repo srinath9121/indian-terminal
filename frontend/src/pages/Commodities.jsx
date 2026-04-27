@@ -82,18 +82,18 @@ const CommodityCard = ({ item }) => {
 
       {/* Price Section */}
       <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 24, fontWeight: 700, color: '#FFFFFF', marginBottom: 4 }}>
-        ₹<AnimatedValue value={item.price_inr} formatter={formatIndianNumber} />
+        ₹<AnimatedValue value={item.inr_price} formatter={formatIndianNumber} />
       </div>
 
       <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 12, fontWeight: 700, color, marginBottom: 16 }}>
-        {isUp ? '▲' : '▼'} {formatIndianNumber(Math.abs(item.change_inr))} ({isUp ? '+' : ''}{item.pct_change?.toFixed(2)}%)
+        {isUp ? '▲' : '▼'} {formatIndianNumber(Math.abs(item.inr_change))} ({isUp ? '+' : ''}{item.pct_change?.toFixed(2)}%)
       </div>
 
       {/* Sparkline */}
       <div style={{ height: 80, width: '100%', marginBottom: 16 }}>
-        {item.history && item.history.length > 0 ? (
+        {item.sparkline && item.sparkline.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={item.history}>
+            <AreaChart data={item.sparkline.map((val, i) => ({ index: i, price: val }))}>
               <defs>
                 <linearGradient id={`grad-${item.id}`} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor={color} stopOpacity={0.3}/>

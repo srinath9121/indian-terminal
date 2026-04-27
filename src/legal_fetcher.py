@@ -59,6 +59,7 @@ class LegalFetcher:
                     logger.warning(f"CourtListener returned {resp.status_code} for '{term}'")
             except Exception as e:
                 logger.warning(f"CourtListener fetch failed for '{term}': {e}")
+                
         return results
 
     def fetch_sebi_orders(self, symbol: str) -> list:

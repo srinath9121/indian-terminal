@@ -3,8 +3,8 @@
 body {
   margin: 0;
   font-family: 'Inter', sans-serif;
-  background-color: #FFFFFF;
-  color: #111827;
+  background-color: #050505; /* Black aesthetic */
+  color: #E5E7EB;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -23,7 +23,68 @@ body {
   animation-play-state: paused;
 }
 
+/* Radar Sweep Animation */
+@keyframes radarSweep {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.radar-container {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 1px solid #333;
+  overflow: hidden;
+  background: radial-gradient(circle, #1a0505 0%, #000 70%);
+}
+
+.radar-sweep {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 50%;
+  height: 50%;
+  background: conic-gradient(from 0deg, rgba(239,68,68,0) 0%, rgba(239,68,68,0.5) 100%);
+  transform-origin: bottom left;
+  animation: radarSweep 3s linear infinite;
+}
+
+.radar-grid {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image: 
+    linear-gradient(#333 1px, transparent 1px),
+    linear-gradient(90deg, #333 1px, transparent 1px);
+  background-size: 20px 20px;
+  opacity: 0.2;
+  border-radius: 50%;
+}
+
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #F3F4F6; }
-::-webkit-scrollbar-thumb { background: #D1D5DB; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #9CA3AF; }
+::-webkit-scrollbar-track { background: #111; }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #EF4444; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Mobile Responsive */
+@media (max-width: 1024px) {
+  body { font-size: 14px; }
+}
+
+@media (max-width: 768px) {
+  body { font-size: 13px; }
+  /* Force single column grids on tablet/mobile */
+  div[style*="gridTemplateColumns"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 480px) {
+  body { font-size: 12px; }
+}
+

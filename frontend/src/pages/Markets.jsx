@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { LineChart, Line, AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts';
+import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from 'recharts';
 
 // ────── MOVERS TABLE ──────
 function MoversTable({ title, data, type, flash }) {
@@ -211,6 +211,7 @@ function IndexSparkline({ name, data, color }) {
 export default function Markets() {
   const [movers, setMovers] = useState(null);
   const [sparklines, setSparklines] = useState(null);
+  const [fiiHistory, setFiiHistory] = useState(null);
   const [mktStatus, setMktStatus] = useState(null);
   const [flash, setFlash] = useState(false);
   const [istTime, setIstTime] = useState('');
@@ -223,7 +224,6 @@ export default function Markets() {
         const r = await fetch('/api/market/movers');
         if (r.ok) {
           const d = await r.json();
-          // Sort explicitly per doc
           if (d.gainers) d.gainers.sort((a, b) => b.pChange - a.pChange);
           if (d.losers) d.losers.sort((a, b) => a.pChange - b.pChange);
           setMovers(d);
@@ -247,9 +247,17 @@ export default function Markets() {
       } catch {}
     };
 
+    const fetchFiiHistory = async () => {
+      try {
+        const r = await fetch('/api/fii-history-chart');
+        if (r.ok) setFiiHistory(await r.json());
+      } catch {}
+    };
+
     fetchMovers();
     fetchSparklines();
     fetchStatus();
+    fetchFiiHistory();
 
     const moversInterval = setInterval(fetchMovers, 5 * 60 * 1000);
     const sparkInterval = setInterval(fetchSparklines, 5 * 60 * 1000);
@@ -376,6 +384,37 @@ export default function Markets() {
         <IndexSparkline name="NIFTY 50" data={sparklines?.NIFTY} color="#00D4FF" />
         <IndexSparkline name="SENSEX" data={sparklines?.SENSEX} color="#EAB308" />
         <IndexSparkline name="BANKNIFTY" data={sparklines?.BANKNIFTY} color="#A78BFA" />
+      </div>
+
+      {/* ══ ROW 3: FII HISTORY CHART ══ */}
+      <div style={{
+        background: '#0D0D1A', border: '1px solid #1A1A2E', borderRadius: 8, padding: 24, marginBottom: 24
+      }}>
+        <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 12, color: '#D1D5DB', fontWeight: 700, marginBottom: 16 }}>
+          FII NET FLOWS (30 DAYS)
+        </div>
+        <div style={{ height: 250 }}>
+          {fiiHistory ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={fiiHistory} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                <XAxis dataKey="date" stroke="#374151" tick={{ fill: '#6B7280', fontSize: 10, fontFamily: "'Space Mono', monospace" }} />
+                <YAxis stroke="#374151" tick={{ fill: '#6B7280', fontSize: 10, fontFamily: "'Space Mono', monospace" }} tickFormatter={(v) => `${v > 0 ? '+' : ''}${v} Cr`} />
+                <Tooltip
+                  cursor={{ fill: '#1A1A2E' }}
+                  contentStyle={{ background: '#111827', border: '1px solid #374151', borderRadius: 4, fontFamily: "'Space Mono', monospace", fontSize: 10, color: '#FFF' }}
+                  formatter={(val) => [`${val > 0 ? '+' : ''}${val} Cr`, 'FII Net']}
+                />
+                <Bar dataKey="fii_net" isAnimationActive={false}>
+                  {fiiHistory.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.fii_net >= 0 ? '#22C55E' : '#EF4444'} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#6B7280' }}>Loading FII History...</div>
+          )}
+        </div>
       </div>
 
       {/* ══ BOTTOM BAR: MARKET STATUS ══ */}

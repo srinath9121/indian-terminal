@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import OverviewTab from './components/OverviewTab';
-import OptionsTab from './components/OptionsTab';
-import AnalysisTab from './components/AnalysisTab';
-import LegalTab from './components/LegalTab';
-import NewsTab from './components/NewsTab';
-import Dashboard from './components/Dashboard';
-import WarningPulse from './components/WarningPulse';
+import OverviewTab from './OverviewTab';
+import OptionsTab from './OptionsTab';
+import AnalysisTab from './AnalysisTab';
+import LegalTab from './LegalTab';
+import NewsTab from './NewsTab';
+import Dashboard from './Dashboard';
+import WarningPulse from './WarningPulse';
 
 const TICKER_SYMBOLS = [
   'ADANIENT', 'ADANIPORTS', 'ADANIGREEN', 'ADANIPOWER', 'ATGL', 
@@ -20,8 +20,10 @@ const fetchTickerData = async () => {
     const d = await resp.json();
     return (d.stocks || []).map(s => ({
       symbol: s.symbol,
-      price: s.danger_score || 0,
-      change: '0', pct: '0', isUp: true,
+      price: s.price || s.danger_score || 0,
+      change: s.change || '0', 
+      pct: s.pct || '0', 
+      isUp: s.isUp !== undefined ? s.isUp : true,
       dangerScore: s.danger_score || 0,
       signal: s.final_signal || 'CLEAR',
     }));

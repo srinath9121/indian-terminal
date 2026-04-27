@@ -5,8 +5,9 @@ import Macro from './pages/Macro.jsx';
 import GeoMap from './pages/GeoMap.jsx';
 import Markets from './pages/Markets.jsx';
 import Commodities from './pages/Commodities.jsx';
+import WarningApp from './components/warning/WarningApp.jsx';
 
-const TABS = ['PULSE', 'MACRO', 'GEO MAP', 'MARKETS', 'COMMODITIES'];
+const TABS = ['PULSE', 'MACRO', 'GEO MAP', 'MARKETS', 'COMMODITIES', 'RISK RADAR'];
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('PULSE');
@@ -296,6 +297,11 @@ export default function App() {
           {activeTab === 'GEO MAP' && <GeoMap commodityData={commodityData} />}
           {activeTab === 'MARKETS' && <Markets />}
           {activeTab === 'COMMODITIES' && <Commodities commodityData={commodityData} />}
+          {activeTab === 'RISK RADAR' && (
+            <div style={{ margin: '-24px' }}>
+              <WarningApp />
+            </div>
+          )}
         </div>
       </div>
 

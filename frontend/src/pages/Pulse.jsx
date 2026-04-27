@@ -80,15 +80,15 @@ function MetricCard({ name, price, change, pChange, isUp, sparkline, isLive, fla
   );
 }
 
-// ────── GTI GAUGE COMPONENT ──────
-function GtiGauge({ score }) {
-  const safeScore = score ?? 0;
-
-  const getZoneLabel = (val) => {
-    if (val >= 80) return 'CRITICAL';
-    if (val >= 60) return 'ELEVATED';
-    if (val >= 35) return 'MODERATE';
-    return 'LOW';
+// ────── IRS GAUGE COMPONENT (Phase 3) ──────
+function IrsGauge({ data }) {
+  const safeScore = data?.irs ?? 0;
+  const zoneLabel = data?.zone ?? 'UNKNOWN';
+  const factors = data?.factors ?? {
+    event_volume: 0,
+    avg_severity: 0,
+    market_stress: 0,
+    keyword_density: 0
   };
 
   const getZoneColor = (val) => {
@@ -98,15 +98,13 @@ function GtiGauge({ score }) {
     return '#16A34A';
   };
 
-  const zoneLabel = getZoneLabel(safeScore);
   const zoneColor = getZoneColor(safeScore);
 
   // SVG semicircular gauge
-  const cx = 100, cy = 100, r = 80;
+  const cx = 100, cy = 90, r = 70;
   const startAngle = Math.PI;
   const sweepAngle = Math.PI;
 
-  // Zone arcs
   const zones = [
     { from: 0,  to: 35,  color: '#16A34A' },
     { from: 35, to: 60,  color: '#EAB308' },
@@ -125,67 +123,60 @@ function GtiGauge({ score }) {
     return `M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2}`;
   };
 
-  // Needle
   const needleAngle = startAngle + (safeScore / 100) * sweepAngle;
-  const needleLen = 65;
+  const needleLen = 55;
   const nx = cx + needleLen * Math.cos(needleAngle);
   const ny = cy + needleLen * Math.sin(needleAngle);
 
+  const factorBars = [
+    { label: 'EVENT VOLUME', value: factors.event_volume, color: '#00D4FF' },
+    { label: 'AVG SEVERITY', value: factors.avg_severity, color: '#F97316' },
+    { label: 'MARKET STRESS', value: factors.market_stress, color: '#A78BFA' },
+    { label: 'KEYWORD DENS.', value: factors.keyword_density, color: '#EF4444' },
+  ];
+
   return (
     <div style={{
-      background: '#0D0D1A',
-      border: '1px solid #1A1A2E',
-      borderRadius: 4,
-      padding: 20,
-      textAlign: 'center',
+      background: '#0D0D1A', border: '1px solid #1A1A2E', borderRadius: 4, padding: '20px 20px 10px 20px', textAlign: 'center', flex: 1, display: 'flex', flexDirection: 'column'
     }}>
       <div style={{
-        fontFamily: "'Inter', Arial, sans-serif",
-        fontSize: 10,
-        color: '#6B7280',
-        letterSpacing: '0.08em',
-        textTransform: 'uppercase',
-        marginBottom: 12,
+        fontFamily: "'Inter', Arial, sans-serif", fontSize: 10, color: '#6B7280', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 4
       }}>
-        INDIA GTI (Geopolitical Tension Index)
+        INDIA RISK SCORE (IRS)
       </div>
 
-      <svg viewBox="0 0 200 120" style={{ width: '100%', maxWidth: 260 }}>
-        {zones.map((z, i) => (
-          <path key={i} d={arcPath(z.from, z.to)} fill="none" stroke={z.color} strokeWidth="10" strokeLinecap="butt" opacity={0.6} />
+      <div style={{ position: 'relative', height: 110 }}>
+        <svg viewBox="0 0 200 100" style={{ width: '100%', maxWidth: 220, position: 'absolute', left: '50%', transform: 'translateX(-50%)' }}>
+          {zones.map((z, i) => (
+            <path key={i} d={arcPath(z.from, z.to)} fill="none" stroke={z.color} strokeWidth="8" strokeLinecap="butt" opacity={0.6} />
+          ))}
+          <line x1={cx} y1={cy} x2={nx} y2={ny} stroke={zoneColor} strokeWidth="3" strokeLinecap="round" style={{ transition: 'all 0.8s ease-out' }} />
+          <circle cx={cx} cy={cy} r="4" fill={zoneColor} />
+          <text x="20" y="95" fill="#6B7280" fontFamily="'Space Mono', monospace" fontSize="8" textAnchor="middle">0</text>
+          <text x="180" y="95" fill="#6B7280" fontFamily="'Space Mono', monospace" fontSize="8" textAnchor="middle">100</text>
+        </svg>
+        
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0 }}>
+          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 28, fontWeight: 700, color: zoneColor, lineHeight: 1 }}>
+            <AnimatedValue value={safeScore} color={zoneColor} />
+          </div>
+          <div style={{ fontFamily: "'Inter', Arial, sans-serif", fontSize: 10, color: zoneColor, fontWeight: 600, letterSpacing: '0.1em', marginTop: 2 }}>
+            {zoneLabel}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ marginTop: 'auto', paddingTop: 16 }}>
+        {factorBars.map((f, i) => (
+          <div key={i} style={{ display: 'flex', alignItems: 'center', marginBottom: 6, gap: 8 }}>
+            <div style={{ width: 80, textAlign: 'left', fontFamily: "'Space Mono', monospace", fontSize: 9, color: '#9CA3AF' }}>
+              {f.label}
+            </div>
+            <div style={{ flex: 1, height: 4, background: '#1A1A2E', borderRadius: 2, overflow: 'hidden' }}>
+              <div style={{ width: `${f.value}%`, height: '100%', background: f.color, transition: 'width 0.8s ease' }} />
+            </div>
+          </div>
         ))}
-        {/* Needle */}
-        <line
-          x1={cx} y1={cy} x2={nx} y2={ny}
-          stroke={zoneColor} strokeWidth="3" strokeLinecap="round"
-          style={{ transition: 'all 0.8s ease-out' }}
-        />
-        <circle cx={cx} cy={cy} r="5" fill={zoneColor} />
-        <text x="20" y="115" fill="#6B7280" fontFamily="'Space Mono', monospace" fontSize="9" textAnchor="middle">0</text>
-        <text x="180" y="115" fill="#6B7280" fontFamily="'Space Mono', monospace" fontSize="9" textAnchor="middle">100</text>
-      </svg>
-
-      {/* Score */}
-      <div style={{
-        fontFamily: "'Space Mono', monospace",
-        fontSize: 32,
-        fontWeight: 700,
-        color: zoneColor,
-        marginTop: -8,
-      }}>
-        <AnimatedValue value={safeScore} color={zoneColor} />
-      </div>
-
-      {/* Zone label */}
-      <div style={{
-        fontFamily: "'Inter', Arial, sans-serif",
-        fontSize: 11,
-        color: zoneColor,
-        fontWeight: 600,
-        letterSpacing: '0.1em',
-        marginTop: 4,
-      }}>
-        {zoneLabel}
       </div>
     </div>
   );
@@ -421,7 +412,7 @@ function NewsTicker({ news }) {
 export default function Pulse({ liveData }) {
   const [signals, setSignals] = useState(null);
   const [fiiDii, setFiiDii] = useState(null);
-  const [gtiScore, setGtiScore] = useState(null);
+  const [irsData, setIrsData] = useState(null);
   const [sectors, setSectors] = useState([]);
   const [news, setNews] = useState([]);
   const [flashCards, setFlashCards] = useState(false);
@@ -434,17 +425,17 @@ export default function Pulse({ liveData }) {
       fetch(url).then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).catch(() => fallback);
 
     const fetchAll = async () => {
-      const [sig, fii, gti, sec, newsData] = await Promise.all([
+      const [sig, fii, irsDataFetch, sec, newsData] = await Promise.all([
         safeFetch('/api/signals'),
-        safeFetch('/api/fii-dii'),
-        safeFetch('/api/gdelt/india-events'),
+        safeFetch('/api/fii-history'),
+        safeFetch('/api/india-risk-score'),
         safeFetch('/api/sector-performance'),
         safeFetch('/api/geopolitical-news'),
       ]);
 
       if (sig) setSignals(sig);
       if (fii) setFiiDii(fii);
-      if (gti) setGtiScore(gti.gti ?? gti.score ?? 0);
+      if (irsDataFetch) setIrsData(irsDataFetch);
       if (sec) {
         if (sec.data) setSectors(sec.data);
         else if (Array.isArray(sec)) setSectors(sec);
@@ -465,15 +456,15 @@ export default function Pulse({ liveData }) {
       } catch {}
     }, 5 * 60 * 1000); // 5min
 
-    const gtiInterval = setInterval(async () => {
+    const irsInterval = setInterval(async () => {
       try {
-        const r = await fetch('/api/gdelt/india-events');
+        const r = await fetch('/api/india-risk-score');
         if (r.ok) {
           const d = await r.json();
-          setGtiScore(d.gti ?? d.score ?? 0);
+          setIrsData(d);
         }
       } catch {}
-    }, 15 * 60 * 1000); // 15min
+    }, 10 * 60 * 1000); // 10min
 
     const sectorInterval = setInterval(async () => {
       try {
@@ -498,7 +489,7 @@ export default function Pulse({ liveData }) {
 
     return () => {
       clearInterval(fiiInterval);
-      clearInterval(gtiInterval);
+      clearInterval(irsInterval);
       clearInterval(sectorInterval);
       clearInterval(newsInterval);
     };
@@ -524,6 +515,16 @@ export default function Pulse({ liveData }) {
           }
           return next;
         });
+      }
+
+      // Websocket injects IRS
+      if (liveData.irs != null) {
+        setIrsData(prev => ({
+          ...prev,
+          irs: liveData.irs,
+          zone: liveData.zone,
+          factors: liveData.irs_factors || prev?.factors
+        }));
       }
 
       // Flash cards on update
@@ -586,8 +587,8 @@ export default function Pulse({ liveData }) {
         {/* LEFT: FII/DII FLOW */}
         <FiiDiiPanel data={fiiDii} />
 
-        {/* CENTER: INDIA GTI GAUGE */}
-        <GtiGauge score={gtiScore} />
+        {/* CENTER: INDIA RISK SCORE GAUGE */}
+        <IrsGauge data={irsData} />
 
         {/* RIGHT: SECTOR HEATMAP */}
         <SectorHeatmap sectors={sectors} />

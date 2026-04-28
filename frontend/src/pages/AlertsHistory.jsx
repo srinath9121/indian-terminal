@@ -3,6 +3,7 @@ import { safeFetch } from '../utils/api';
 
 export default function AlertsHistory() {
   const [alerts, setAlerts] = useState([]);
+  const [liveAlerts, setLiveAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -18,7 +19,24 @@ export default function AlertsHistory() {
         setLoading(false);
       }
     };
+    
+    const fetchLiveAlerts = async () => {
+      try {
+        const resp = await safeFetch('/warning/api/alerts/live');
+        if (resp && resp.alerts) {
+          setLiveAlerts(resp.alerts);
+        }
+      } catch (e) {
+        console.error('Failed to fetch live alerts:', e);
+      }
+    };
+
     fetchAlerts();
+    fetchLiveAlerts();
+    
+    // Poll live alerts every 60s
+    const id = setInterval(fetchLiveAlerts, 60000);
+    return () => clearInterval(id);
   }, []);
 
   if (loading) {
@@ -28,12 +46,48 @@ export default function AlertsHistory() {
   return (
     <div style={{ padding: '24px', animation: 'fadeIn 0.3s ease', maxWidth: 1200, margin: '0 auto' }}>
       
+      {/* ── LIVE ACTIVITY FEED (New) ── */}
+      <div style={{ marginBottom: 40 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#EF4444', boxShadow: '0 0 8px #EF4444', animation: 'pulse 2s infinite' }} />
+          <h2 style={{ color: '#F9FAFB', margin: 0, fontSize: 18, fontFamily: "'Space Mono', monospace" }}>
+            LIVE ADANI ACTIVITY FEED
+          </h2>
+          <span style={{ color: '#6B7280', fontSize: 10 }}>UPDATES EVERY MINUTE</span>
+        </div>
+        
+        <div style={{ background: '#0D0D1A', border: '1px solid #1F2937', borderRadius: 8, maxHeight: 250, overflowY: 'auto', padding: 4 }}>
+          {liveAlerts.length === 0 ? (
+            <div style={{ padding: 20, color: '#4B5563', fontSize: 12, fontFamily: "'Space Mono', monospace", textAlign: 'center' }}>
+              Monitoring Adani volatility...
+            </div>
+          ) : (
+            liveAlerts.map((la, i) => (
+              <div key={i} style={{ 
+                display: 'flex', alignItems: 'center', gap: 16, padding: '10px 16px', 
+                borderBottom: i === liveAlerts.length - 1 ? 'none' : '1px solid #1F2937',
+                fontFamily: "'Space Mono', monospace", fontSize: 12,
+                animation: 'slideInRight 0.3s ease'
+              }}>
+                <span style={{ color: '#6B7280' }}>[{la.time}]</span>
+                <span style={{ color: '#00D4FF', fontWeight: 'bold', minWidth: 100 }}>{la.stock}</span>
+                <span style={{ color: '#D1D5DB', flex: 1 }}>{la.event}</span>
+                <span style={{ 
+                  color: la.severity === 'HIGH' ? '#EF4444' : la.severity === 'MEDIUM' ? '#F59E0B' : '#10B981',
+                  fontSize: 10, fontWeight: 'bold'
+                }}>[{la.severity}]</span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
       <div style={{ marginBottom: 32 }}>
         <h2 style={{ color: '#F9FAFB', margin: '0 0 8px 0', fontSize: 24, fontFamily: "'Space Mono', monospace" }}>
-          SYSTEM ALERT LOG
+          HISTORICAL CRITICAL LOG
         </h2>
         <p style={{ color: '#9CA3AF', fontSize: 14, margin: 0 }}>
-          Historical record of critical system alerts and their forward returns.
+          Archive of major structural alerts and forward returns.
         </p>
       </div>
 

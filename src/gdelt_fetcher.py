@@ -288,3 +288,6 @@ class GDELTFetcher:
                 e['bias'] = 'bullish' if e['tone'] > 1 else ('bearish' if e['tone'] < -1 else 'neutral')
                 e['source'] = e['domain']
         return events
+
+# Export singleton
+gdelt_fetcher = GDELTFetcher()

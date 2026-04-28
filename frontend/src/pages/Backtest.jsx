@@ -67,21 +67,21 @@ export default function Backtest() {
     <div style={{ padding: '24px', animation: 'fadeIn 0.3s ease', maxWidth: 1200, margin: '0 auto' }}>
       
       {/* Header section designed to look like a forensic report */}
-      <div style={{ marginBottom: 32, padding: 24, background: '#0D0D1A', borderLeft: '4px solid #EF4444', borderRadius: '0 8px 8px 0', border: '1px solid #1F2937' }}>
+      <div style={{ marginBottom: 32, padding: 24, background: '#0D0D1A', borderLeft: '4px solid #00D4FF', borderRadius: '0 8px 8px 0', border: '1px solid #1F2937' }}>
         <h2 style={{ color: '#F9FAFB', margin: '0 0 12px 0', fontSize: 24, fontFamily: "'Space Mono', monospace" }}>
-          FORENSIC BACKTEST: ADANIENT.NS
+          MULTI-YEAR RISK INFERENCE: ADANIENT.NS
         </h2>
         <p style={{ color: '#9CA3AF', fontSize: 15, lineHeight: 1.6, margin: 0, maxWidth: 800 }}>
-          In January 2023, Hindenburg Research published their short report on the Adani Group. The stock crashed. 
-          This module replays our Rule-Based Danger Engine across historical data to determine if the system would have fired warnings <em>before</em> the catastrophic drop.
+          This view tracks the evolution of our Risk Radar across the entire 2023–2026 period. 
+          It captures the Hindenburg crash, the structural recovery phase, and current live market volatility in April 2026.
         </p>
         
         {/* Key Finding highlight */}
-        <div style={{ marginTop: 20, background: 'rgba(239, 68, 68, 0.1)', padding: '16px 20px', borderRadius: 8, border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+        <div style={{ marginTop: 20, background: 'rgba(0, 212, 255, 0.1)', padding: '16px 20px', borderRadius: 8, border: '1px solid rgba(0, 212, 255, 0.2)' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div style={{ color: '#EF4444', fontWeight: 'bold', fontSize: 18 }}>RESULT:</div>
+            <div style={{ color: '#00D4FF', fontWeight: 'bold', fontSize: 18 }}>LIVE INFERENCE:</div>
             <div style={{ color: '#F9FAFB', fontSize: 16 }}>
-              System fired <span style={{ color: '#EF4444', fontWeight: 'bold' }}>CRITICAL ALERTS</span> starting Jan 24, 2023 — days before the major crash.
+              Displaying <span style={{ color: '#00D4FF', fontWeight: 'bold' }}>{data.length} data points</span> — from the 2023 crash to today's live environment.
             </div>
           </div>
         </div>
@@ -97,7 +97,7 @@ export default function Backtest() {
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="#1F2937" vertical={false} />
-            <XAxis dataKey="date" stroke="#6B7280" tick={{ fill: '#6B7280', fontSize: 11 }} tickMargin={10} minTickGap={30} />
+            <XAxis dataKey="date" stroke="#6B7280" tick={{ fill: '#6B7280', fontSize: 11 }} tickMargin={10} minTickGap={60} />
             <YAxis yAxisId="left" stroke="#6B7280" domain={['auto', 'auto']} tick={{ fill: '#6B7280', fontSize: 11 }} tickFormatter={(val) => `₹${val}`} />
             <YAxis yAxisId="right" orientation="right" stroke="#EF4444" domain={[0, 100]} tick={{ fill: '#EF4444', fontSize: 11 }} />
             <Tooltip content={<CustomTooltip />} />

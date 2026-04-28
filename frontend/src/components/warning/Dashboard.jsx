@@ -26,7 +26,10 @@ const fetchDashboardData = async () => {
         ];
         layerEntries.sort((a, b) => b.score - a.score);
         return {
-          symbol: s.symbol, name: s.symbol + ' Ltd', price: '—', pct: '—', isUp: true,
+          symbol: s.symbol, name: s.symbol + ' Ltd', 
+          price: s.price > 0 ? s.price : '—', 
+          pct: s.pct !== 0 ? s.pct : '—', 
+          isUp: s.isUp !== undefined ? s.isUp : true,
           dangerScore: s.danger_score || 0, activeLayerName: layerEntries[0].name,
           layersStatus: {
             OPTIONS: getStatus(layers.options_anomaly || 0),
@@ -97,10 +100,39 @@ export default function Dashboard({ onSelectStock }) {
 
   return (
     <div style={{ animation: 'fadeIn 0.3s ease' }}>
+      
+      {/* ── PRINT MEDIA STYLES ── */}
+      <style>{`
+        @media print {
+          body { background: #0A0A0F !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          .no-print { display: none !important; }
+        }
+      `}</style>
+
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 3fr', gap: 32 }}>
         
         {/* ── LEFT: GROUP RISK ── */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          
+          {/* EXPORT TO PDF BUTTON */}
+          <button 
+            className="no-print"
+            onClick={() => window.print()}
+            style={{ 
+              background: '#EF4444', color: '#FFF', border: 'none', borderRadius: 8, padding: '12px 16px', 
+              fontFamily: "'Space Mono', monospace", fontSize: 13, fontWeight: 700, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)', transition: 'background 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#DC2626'}
+            onMouseLeave={(e) => e.currentTarget.style.background = '#EF4444'}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+            </svg>
+            DOWNLOAD RISK REPORT
+          </button>
+
           <div style={{ background: '#0D0D1A', border: '1px solid #1F2937', borderRadius: 12, padding: 24, textAlign: 'center' }}>
             <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 12, color: '#9CA3AF', letterSpacing: '0.08em', marginBottom: 20 }}>ADANI GROUP RISK INDEX</div>
             <SemiCircleGauge 

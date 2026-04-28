@@ -409,6 +409,68 @@ function MacroCalendar({ events }) {
   );
 }
 
+// ────── MACRO CORRELATION PANEL (Section 6) ──────
+function MacroCorrelationPanel({ data }) {
+  if (!data) return null;
+  
+  if (data.error) {
+    return (
+      <div style={{ ...cardStyle, flex: 1, gridColumn: '1 / -1' }}>
+        <div style={cardHeaderStyle}><span>NIFTY DRAWDOWN CORRELATION</span></div>
+        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 12, color: '#6B7280' }}>Failed to compute correlation data.</div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ ...cardStyle, flex: 1, gridColumn: '1 / -1', background: '#0A0A0F', border: '1px solid #1F2937' }}>
+      <div style={cardHeaderStyle}>
+        <span style={{ color: '#00D4FF' }}>NIFTY DRAWDOWN CORRELATION</span>
+      </div>
+      
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 24 }}>
+        <div>
+          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 11, color: '#9CA3AF', marginBottom: 12 }}>
+            CONDITIONS MET:
+          </div>
+          <div style={{ background: '#111827', padding: '12px', borderRadius: 4, borderLeft: '3px solid #EF4444', fontFamily: "'Space Mono', monospace", fontSize: 12, color: '#EF4444', fontWeight: 700, marginBottom: 16 }}>
+            {data.conditions_met}
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ background: '#111827', padding: '10px', borderRadius: 4 }}>
+              <div style={{ fontSize: 10, color: '#6B7280', marginBottom: 4 }}>HISTORICAL OCCURRENCES</div>
+              <div style={{ fontSize: 18, color: '#F9FAFB', fontFamily: "'Space Mono', monospace", fontWeight: 700 }}>{data.occurrences}</div>
+            </div>
+            <div style={{ background: '#111827', padding: '10px', borderRadius: 4 }}>
+              <div style={{ fontSize: 10, color: '#6B7280', marginBottom: 4 }}>AVG RECOVERY</div>
+              <div style={{ fontSize: 18, color: '#F9FAFB', fontFamily: "'Space Mono', monospace", fontWeight: 700 }}>{data.avg_recovery_days}d</div>
+            </div>
+          </div>
+        </div>
+        
+        <div>
+          <div style={{ display: 'flex', gap: 24, marginBottom: 16 }}>
+            <div>
+              <div style={{ fontSize: 11, color: '#6B7280', marginBottom: 4, fontFamily: "'Inter', sans-serif" }}>AVG DRAWDOWN</div>
+              <div style={{ fontSize: 28, color: '#EF4444', fontFamily: "'Space Mono', monospace", fontWeight: 700 }}>{data.nifty_avg_drawdown}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: '#6B7280', marginBottom: 4, fontFamily: "'Inter', sans-serif" }}>MAX DRAWDOWN</div>
+              <div style={{ fontSize: 28, color: '#991B1B', fontFamily: "'Space Mono', monospace", fontWeight: 700 }}>{data.max_drawdown}</div>
+            </div>
+          </div>
+          
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: '#D1D5DB', lineHeight: 1.6, padding: '12px', background: 'rgba(239, 68, 68, 0.05)', borderRadius: 4, border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+            <span style={{ fontWeight: 600, color: '#EF4444' }}>Insight: </span> 
+            {data.narrative}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ────── SHARED STYLES ──────
 const cardStyle = {
   background: '#0D0D1A',
@@ -447,10 +509,11 @@ export default function Macro() {
   const [maxPain, setMaxPain] = useState(null);
   const [movers, setMovers] = useState(null);
   const [calendar, setCalendar] = useState([]);
+  const [correlation, setCorrelation] = useState(null);
 
   useEffect(() => {
     const fetchAll = async () => {
-      const [g, p, m, f, mp, mov, cal] = await Promise.all([
+      const [g, p, m, f, mp, mov, cal, corr] = await Promise.all([
         safeFetch('/api/macro/gst'),
         safeFetch('/api/macro/power'),
         safeFetch('/api/macro/monsoon'),
@@ -458,6 +521,7 @@ export default function Macro() {
         safeFetch('/api/macro/max-pain'),
         safeFetch('/api/market/movers'),
         safeFetch('/api/macro-calendar'),
+        safeFetch('/warning/api/macro-correlation'),
       ]);
       if (g) setGst(g);
       if (p) setPower(p);
@@ -466,6 +530,7 @@ export default function Macro() {
       if (mp) setMaxPain(mp);
       if (mov) setMovers(mov);
       if (cal) setCalendar(Array.isArray(cal) ? cal : []);
+      if (corr) setCorrelation(corr);
     };
     fetchAll();
 
@@ -504,7 +569,12 @@ export default function Macro() {
         <BreadthPanel data={movers} />
       </div>
 
-      {/* ═══ ROW 3: MACRO CALENDAR ═══ */}
+      {/* ═══ ROW 3: MACRO CORRELATION VIEW ═══ */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', marginBottom: 24 }}>
+        <MacroCorrelationPanel data={correlation} />
+      </div>
+
+      {/* ═══ ROW 4: MACRO CALENDAR ═══ */}
       <MacroCalendar events={calendar} />
     </div>
   );

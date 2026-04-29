@@ -247,11 +247,13 @@ async def unified_sync_service():
             
             # Extract the validated FX rate to use for commodities
             fx = validation['fx_rate']
+            if "USDINR" in m_res:
+                m_res["USDINR"]["price"] = fx
+
             # We can store the data quality flag in the global state so the UI knows if data is STALE/LIVE
             pulse_extra = {'data_quality': validation['data_quality']}
             # ── Commodities ──
             c_res = []
-            pulse_extra = {}
             for c in COMMODITIES_CONFIG:
                 try:
                     sym   = c["ticker"]
@@ -259,6 +261,12 @@ async def unified_sync_service():
                     close = df[sym]["Close"].dropna()
                     if len(close) < 2: continue
                     curr, prev = float(close.iloc[-1]), float(close.iloc[-2])
+
+                    if c["id"] == "brent":
+                        if not (60 <= curr <= 80):
+                            logger.warning(f"Brent rejected: {curr}")
+                            curr = max(60, min(80, curr))
+                            validation['data_quality'] = 'BLOCKED'
 
                     inr_curr = round(c["formula"](curr, fx), 2)
                     inr_prev = round(c["formula"](prev, fx), 2)
@@ -457,6 +465,25 @@ async def unified_sync_service():
                 vix=macro_ctx.get('vix', 14),
                 nifty_5d_pct=macro_ctx.get('nifty_5d_pct', 0),
             )
+            
+            # Fetch SECTORS and NEWS for unified broadcast
+            sectors_res = get_cached("sectors")
+            if not sectors_res:
+                try:
+                    sectors_res = await loop.run_in_executor(None, _nse.fetch_sectors)
+                    if sectors_res: set_cached("sectors", sectors_res, 600)
+                except:
+                    sectors_res = []
+
+            news_res = get_cached("news_all")
+            if not news_res:
+                try:
+                    news_formatted = [{'headline': f.get('title',''), 'title': f.get('title',''), 'source': f.get('domain',''), 'url': f.get('url','#'), 'date': f.get('seendate',''), 'domain': f.get('domain',''), 'bias': f.get('bias','neutral')} for f in events]
+                    news_res = {"items": news_formatted}
+                    set_cached("news_all", news_res, 600)
+                except:
+                    news_res = {"items": []}
+
             GLOBAL_STATE["market"]     = {**m_res, **pulse_extra}
             GLOBAL_STATE["commodities"] = c_res
             GLOBAL_STATE["macro_regime"] = group_regime
@@ -472,6 +499,9 @@ async def unified_sync_service():
                 "data_quality": validation['data_quality'],   # Block C
                 "macro_regime": group_regime['label'],        # Block G
                 "regime_multiplier": group_regime['multiplier'],
+                "ADANI":     GLOBAL_STATE["adani_prices"],
+                "NEWS":      news_res.get("items", []) if isinstance(news_res, dict) else news_res,
+                "SECTORS":   sectors_res,
             }
             GLOBAL_STATE["last_sync"] = datetime.now(IST).isoformat()
 

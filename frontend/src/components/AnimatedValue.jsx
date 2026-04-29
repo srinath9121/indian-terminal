@@ -25,6 +25,7 @@ export default function AnimatedValue({ value, prefix = '', suffix = '', color =
         const progress = Math.min(elapsed / duration, 1);
         // Ease out quad
         const easeProgress = progress * (2 - progress);
+        const currentVal = startValue + (endValue - startValue) * easeProgress;
         const validCurrent = typeof currentVal === 'number' && !isNaN(currentVal) ? currentVal : 0;
         setDisplayValue(isFloat ? validCurrent.toFixed(2) : Math.round(validCurrent));
         requestAnimationFrame(animate);

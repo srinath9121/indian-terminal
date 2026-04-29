@@ -38,7 +38,7 @@ def validate_inputs(market_data: dict, fx_rate: float,
     flags = []
 
     # FX Guard
-    if not (79 <= fx_rate <= 92):
+    if not (80 <= fx_rate <= 90):
         flags.append(f"USD/INR rejected: {fx_rate}")
         quality = 'BLOCKED'
         fx_rate = _LAST_GOOD['fx_rate']
@@ -319,7 +319,8 @@ LAYER_WEIGHTS = {
 def compute_final_score(layers: dict, regime: dict) -> float:
     """Weighted sum of layer scores × regime multiplier."""
     raw = sum(layers[k]['score'] * LAYER_WEIGHTS[k] for k in LAYER_WEIGHTS)
-    return round(min(raw * regime['multiplier'], 100), 1)
+    final = round(min(raw * regime['multiplier'], 100), 1)
+    return max(final, 12.0) # Base danger level, never 0.
 
 
 def generate_decision(score: float, regime: dict) -> dict:

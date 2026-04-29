@@ -157,8 +157,8 @@ export default function App() {
     navbar: {
       width: '100%',
       height: 48,
-      background: '#0D0D1A',
-      borderBottom: '1px solid #1A1A2E',
+      background: '#0F0F0F',
+      borderBottom: '1px solid #333333',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'space-between',
@@ -170,11 +170,11 @@ export default function App() {
       zIndex: 1000,
     },
     logo: {
-      fontFamily: "'Space Mono', monospace",
+      fontFamily: "'Courier New', monospace",
       fontSize: 14,
-      color: '#FFFFFF',
-      fontWeight: 700,
-      letterSpacing: '0.02em',
+      color: '#E0E0D0',
+      fontWeight: 'bold',
+      letterSpacing: '2px',
       cursor: 'pointer',
       userSelect: 'none',
     },
@@ -183,17 +183,17 @@ export default function App() {
       gap: 0,
     },
     tab: (isActive) => ({
-      fontFamily: "var(--font-display)",
+      fontFamily: "'Courier New', monospace",
       fontSize: 11,
-      fontWeight: 700,
+      fontWeight: 'bold',
       padding: '6px 18px',
       cursor: 'pointer',
       border: 'none',
-      borderBottom: isActive ? '2px solid #00D4FF' : '2px solid transparent',
-      background: 'transparent',
-      color: isActive ? '#FFFFFF' : '#555B66',
-      letterSpacing: '0.1em',
-      transition: 'all 0.2s',
+      borderBottom: 'none',
+      background: isActive ? '#111111' : 'transparent',
+      color: isActive ? '#C8B87A' : '#555555',
+      letterSpacing: '2px',
+      transition: 'none',
     }),
     rightSection: {
       display: 'flex',
@@ -206,25 +206,28 @@ export default function App() {
       gap: 6,
     },
     wsText: {
-      fontFamily: "var(--font-mono)",
-      fontSize: 10,
-      color: wsStatus === 'LIVE' ? '#00FF88' : '#FF8C00',
-      fontWeight: 700,
+      fontFamily: "'Courier New', monospace",
+      fontSize: 12,
+      color: wsStatus === 'LIVE' ? '#22C55E' : '#C8B87A',
+      fontWeight: 'bold',
+      letterSpacing: '2px',
     },
     clockText: {
-      fontFamily: "var(--font-mono)",
+      fontFamily: "'Courier New', monospace",
       fontSize: 12,
-      color: '#8892A0',
-      fontWeight: 400,
+      color: '#E0E0D0',
+      fontWeight: 'bold',
+      letterSpacing: '2px',
     },
     gtiBadge: {
-      fontFamily: "'Space Mono', monospace",
+      fontFamily: "'Courier New', monospace",
       fontSize: 10,
       fontWeight: 700,
       padding: '2px 8px',
-      borderRadius: 4,
+      borderRadius: 0,
       color: getGtiColor(gtiValue),
       background: getGtiBg(gtiValue),
+      border: '1px solid #333333',
     },
     content: {
       flex: 1,
@@ -250,7 +253,7 @@ export default function App() {
       <nav style={styles.navbar}>
         {/* LEFT: Logo */}
         <div style={styles.logo} onClick={() => handleTabSwitch('PULSE')}>
-          ◈ INDIA MACRO TERMINAL
+          INDIA MACRO TERMINAL
         </div>
 
         {/* CENTER: Tabs */}
@@ -276,8 +279,12 @@ export default function App() {
         <div style={styles.rightSection}>
           {/* WS Status */}
           <div style={styles.wsIndicator}>
-            <div className={wsStatus === 'LIVE' ? 'live-dot' : 'live-dot-amber'} />
-            <span style={styles.wsText}>{wsStatus}</span>
+            <div style={{
+              width: 6, height: 6, background: '#22C55E', borderRadius: '50%',
+              animation: 'blink 1.2s step-end infinite',
+              display: wsStatus === 'LIVE' ? 'block' : 'none'
+            }} />
+            <span style={styles.wsText}>{wsStatus === 'LIVE' ? 'LIVE' : wsStatus}</span>
           </div>
 
           {/* Clock */}

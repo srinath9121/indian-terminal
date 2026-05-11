@@ -3,6 +3,7 @@ import Layout from "../components/layout/Layout";
 import Badge from "../components/ui/Badge";
 import Sparkline from "../components/charts/Sparkline";
 import Globe from "../components/globe/Globe";
+import HomepageGlobe from "../components/globe/HomepageGlobe";
 import ErrorBoundary from "../components/ui/ErrorBoundary";
 import { useTerminalStore } from "../store/useTerminalStore";
 
@@ -104,33 +105,10 @@ export default function Pulse() {
           </div>
 
           {/* Globe Section */}
-          <div style={{ flex: 1, background: "var(--nav)", border: "1px solid var(--border)", borderRadius: 10, padding: 16, display: "flex", gap: 16 }}>
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8 }}>
-              <div>
-                <div style={{ color: "var(--text)", fontSize: 13, fontWeight: 700, fontFamily: "var(--mono)", letterSpacing: 1 }}>GLOBAL MACRO MAP</div>
-                <div style={{ color: "var(--green)", fontSize: 9, fontFamily: "var(--mono)" }}>LIVE IMPACT FLOW</div>
-              </div>
-              <div style={{ flex: 1, minHeight: 180 }}>
-                <ErrorBoundary><Globe /></ErrorBoundary>
-              </div>
-              <button onClick={() => navigate("/geo-map")} style={{ background: "none", border: "1px solid #1e3a5f", color: "var(--blue)", borderRadius: 6, padding: "6px 14px", fontSize: 11, fontWeight: 600, cursor: "pointer", fontFamily: "var(--mono)", alignSelf: "flex-start" }}>Explore Geo Map →</button>
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 160 }}>
-              {[
-                { dot: "#ef4444", name: "Middle East", lines: ["Oil Prices ↑", "Inflation Risk ↑"] },
-                { dot: "#f59e0b", name: "China", lines: ["Demand Weakening", "Metals Pressure"] },
-                { dot: "#3b82f6", name: "US", lines: ["Rates Higher", "Liquidity Tight"] },
-                { dot: "#f59e0b", name: "Europe", lines: ["Growth Slowdown", "Risk Aversion"] },
-              ].map(r => (
-                <div key={r.name} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: r.dot, marginTop: 2, flexShrink: 0 }} />
-                  <div>
-                    <div style={{ color: "#e2e8f0", fontSize: 11, fontWeight: 700, fontFamily: "var(--mono)" }}>{r.name}</div>
-                    {r.lines.map(l => <div key={l} style={{ color: "var(--muted)", fontSize: 9, fontFamily: "var(--mono)" }}>{l}</div>)}
-                  </div>
-                </div>
-              ))}
-            </div>
+          <div style={{ flex: 1 }}>
+            <ErrorBoundary>
+              <HomepageGlobe />
+            </ErrorBoundary>
           </div>
         </div>
 

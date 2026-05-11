@@ -135,6 +135,39 @@ def fetch_fii_dii() -> Dict:
     except: pass
     return {"fii": {"net_value": -3247.0, "trend": "outflow", "streak_days": 3}, "dii": {"net_value": 4102.0, "trend": "inflow", "streak_days": 5}}
 
+# ── Adani per-stock signal helpers ──────────────────────────────────────────
+
+def _compute_stock_danger(pct_change: float) -> int:
+    """
+    Danger score 0–100 derived from daily momentum.
+    Negative move → higher danger; positive move → lower danger.
+    Base 40 keeps neutral stocks in mid-range.
+    """
+    if pct_change < 0:
+        return min(90, 40 + int(abs(pct_change) * 10))
+    return max(10, 40 - int(pct_change * 5))
+
+
+def _compute_decision(danger: int, pct_change: float) -> str:
+    """BUY / HOLD / SELL based on danger score and direction."""
+    if danger >= 65 or pct_change < -1.5:
+        return "SELL"
+    if danger <= 30 and pct_change > 1.0:
+        return "BUY"
+    return "HOLD"
+
+
+def _compute_causal(symbol: str, pct_change: float, danger: int) -> str:
+    """One-line causal narrative for the stock card."""
+    if pct_change < -1.0:
+        return f"{symbol} declining — momentum weak, monitor support levels"
+    if pct_change > 1.5:
+        return f"{symbol} surging — macro tailwind and strong buying interest"
+    if danger >= 50:
+        return f"{symbol} consolidating — elevated risk, await clearer signal"
+    return f"{symbol} stable — institutional flows broadly supportive"
+
+
 def fetch_adani() -> List[Dict]:
     """Fetches live Adani stock prices via yfinance."""
     symbols = ["ADANIENT.NS", "ADANIPORTS.NS", "ADANIGREEN.NS", "ADANIPOWER.NS", "ATGL.NS", "ADANIWILM.NS"]
@@ -144,15 +177,18 @@ def fetch_adani() -> List[Dict]:
         for sym in symbols:
             ticker_data = data[sym]
             curr, prev = ticker_data['Close'].iloc[-1], ticker_data['Close'].iloc[-2]
+            pct   = round((curr - prev) / prev * 100, 2)
+            short = sym.replace(".NS", "")
+            danger = _compute_stock_danger(pct)
             results.append({
-                "symbol": sym.replace(".NS", ""),
-                "price": round(curr, 2),
-                "change": round(curr - prev, 2),
-                "pct_change": round((curr - prev)/prev * 100, 2),
-                "direction": "up" if curr >= prev else "down",
-                "danger_score": 35, # Placeholder for ML model
-                "decision": "HOLD",
-                "causal_chain": "Analyzing supply chain..."
+                "symbol":       short,
+                "price":        round(curr, 2),
+                "change":       round(curr - prev, 2),
+                "pct_change":   pct,
+                "direction":    "up" if curr >= prev else "down",
+                "danger_score": danger,
+                "decision":     _compute_decision(danger, pct),
+                "causal_chain": _compute_causal(short, pct, danger),
             })
     except:
         # Fallback to hardcoded mock

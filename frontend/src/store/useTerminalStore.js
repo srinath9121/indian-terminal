@@ -9,17 +9,19 @@ export const useTerminalStore = create((set, get) => ({
   macroData:    null,
   adaniStocks:  [],
   globalSignal: null,
+  alertsData:   null,
   isLoading:    true,
   lastUpdated:  null,
 
   fetchData: async () => {
     set({ isLoading: true });
 
-    const [market, macro, adani, signal] = await Promise.all([
+    const [market, macro, adani, signal, alerts] = await Promise.all([
       getMarketOverview(),
       getMacroIndicators(),
       getAdaniStocks(),
       fetchApi("/signals"),
+      fetchApi("/alerts"),
     ]);
 
     set({
@@ -29,6 +31,7 @@ export const useTerminalStore = create((set, get) => ({
       globalSignal: signal
         ? { ...signal, irs: macro?.irs?.score, irsZone: macro?.irs?.zone, irsMode: macro?.irs?.mode }
         : null,
+      alertsData:   alerts,
       isLoading:    false,
       lastUpdated:  new Date().toISOString(),
     });

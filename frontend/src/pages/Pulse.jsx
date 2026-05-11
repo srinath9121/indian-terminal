@@ -7,7 +7,7 @@ import { useTerminalStore } from "../store/useTerminalStore";
 import Globe from "../components/globe/Globe";
 
 export default function Pulse() {
-  const { marketData, macroData, adaniStocks, globalSignal, isLoading } = useTerminalStore();
+  const { marketData, macroData, adaniStocks, globalSignal, alertsData, isLoading } = useTerminalStore();
 
   const fiiNet   = marketData?.fii_flows?.net_value ?? marketData?.fiiFlows?.netValue;
   const fiiTrend = marketData?.fii_flows?.trend     ?? marketData?.fiiFlows?.trend;
@@ -28,11 +28,19 @@ export default function Pulse() {
     tone: s.conf > 60 ? "bullish" : s.conf < 50 ? "defensive" : "neutral"
   }));
 
-  const alerts = [
-    { title: "Correlation Spike Detected", desc: "Adani group correlation has risen above 0.85", time: "10:23 AM", tone: "defensive" },
-    { title: "FII Outflow Continues", desc: "Net FII selling for 3rd consecutive day", time: "10:15 AM", tone: "neutral" },
-    { title: "Oil Price Surge", desc: "Brent crude above $85/barrel", time: "10:10 AM", tone: "defensive" },
-  ];
+  // Live alerts from backend — fallback to static if not yet loaded
+  const liveAlerts = alertsData?.alerts?.length > 0
+    ? alertsData.alerts.slice(0, 4).map((a) => ({
+        title: a.title,
+        desc:  a.description ?? "",
+        time:  new Date(a.timestamp).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+        tone:  a.priority === "High" ? "defensive" : a.priority === "Medium" ? "neutral" : "bullish",
+      }))
+    : [
+        { title: "Correlation Spike Detected", desc: "Adani group correlation has risen above 0.85", time: "10:23 AM", tone: "defensive" },
+        { title: "FII Outflow Continues",       desc: "Net FII selling for 3rd consecutive day",     time: "10:15 AM", tone: "neutral"   },
+        { title: "Oil Price Surge",             desc: "Brent crude above $85/barrel",               time: "10:10 AM", tone: "defensive" },
+      ];
 
   if (isLoading && !marketData) {
     return <Layout><div className="flex h-screen items-center justify-center text-[var(--muted)] animate-pulse">CONNECTING TO TERMINAL...</div></Layout>;
@@ -93,10 +101,10 @@ export default function Pulse() {
               <Section title="MARKET SNAPSHOT">
                 <div className="grid grid-cols-2 gap-4">
                   {[
-                    { name: "NIFTY", val: marketData?.nifty?.price || "--" }, 
-                    { name: "SENSEX", val: marketData?.sensex?.price || "--" }, 
-                    { name: "BANKNIFTY", val: marketData?.bankNifty?.price || "--" }, 
-                    { name: "VIX", val: marketData?.vix?.price || "--" }
+                    { name: "NIFTY",     val: marketData?.nifty?.price      || "--" },
+                    { name: "SENSEX",    val: marketData?.sensex?.price     || "--" },
+                    { name: "BANKNIFTY", val: marketData?.bank_nifty?.price || "--" },
+                    { name: "VIX",       val: marketData?.vix?.price        || "--" }
                   ].map((x) => (
                     <Card key={x.name}>
                       <div className="text-xs text-[var(--muted)]">{x.name}</div>
@@ -146,7 +154,7 @@ export default function Pulse() {
 
             <Section title="LIVE ALERTS">
               <div className="space-y-4">
-                {alerts.map((a) => (
+                {liveAlerts.map((a) => (
                   <div key={a.title} className="border-b border-[var(--border)] pb-3 last:border-b-0 last:pb-0">
                     <div className="flex items-start justify-between gap-4">
                       <div>
@@ -168,9 +176,9 @@ export default function Pulse() {
           <span className="text-[var(--green)]">LIVE MARKET TICKER</span> | 
           NIFTY {marketData?.nifty?.price || "--"} | 
           SENSEX {marketData?.sensex?.price || "--"} | 
-          BANKNIFTY {marketData?.bankNifty?.price || "--"} | 
-          USD/INR {macroData?.usdInr?.price || "--"} | 
-          CRUDE OIL {macroData?.brentCrude?.price || "--"}
+          BANKNIFTY {marketData?.bank_nifty?.price || "--"} | 
+          USD/INR {macroData?.usd_inr?.price || "--"} | 
+          CRUDE OIL {macroData?.brent_crude?.price || "--"}
         </div>
       </div>
     </Layout>

@@ -1,63 +1,153 @@
-import { NavLink } from "react-router-dom";
 import { useState, useEffect } from "react";
+import { NavLink, useLocation } from "react-router-dom";
 
-const navItems = [
-  { label: "Pulse", href: "/" },
-  { label: "Macro", href: "/macro" },
-  { label: "Markets", href: "/markets" },
-  { label: "Geo Map", href: "/geo-map" },
-  { label: "Commodities", href: "/commodities" },
-  { label: "Risk Radar", href: "/risk-radar" },
-  { label: "Adani Intel", href: "/adani-intel" },
-  { label: "Alerts", href: "/alerts" },
+const LINKS = [
+  { path: "/",            label: "HOME" },
+  { path: "/pulse",       label: "PULSE" },
+  { path: "/macro",       label: "MACRO" },
+  { path: "/markets",     label: "MARKETS" },
+  { path: "/adani-intel", label: "ADANI INTEL" },
+  { path: "/geo-map",     label: "GEO MAP" },
+  { path: "/commodities", label: "COMMODITIES" },
+  { path: "/risk-radar",  label: "RISK RADAR" },
+  { path: "/alerts",      label: "ALERTS" },
 ];
 
-export default function Navbar() {
-  const [time, setTime] = useState(new Date());
-
+function LiveClock() {
+  const [time, setTime] = useState("");
   useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000);
-    return () => clearInterval(timer);
+    const tick = () => {
+      setTime(
+        new Date().toLocaleTimeString("en-IN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+          timeZone: "Asia/Kolkata",
+        }) + " IST"
+      );
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
   }, []);
+  return <span style={{ color: "#94a3b8", fontSize: 11, fontFamily: "var(--mono)" }}>{time}</span>;
+}
 
-  const formatTime = (date) => {
-    return date.toLocaleTimeString("en-IN", {
-      hour12: false,
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      timeZone: "Asia/Kolkata",
-    });
-  };
+export default function Navbar() {
+  const location = useLocation();
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--border)] bg-[var(--bg)]/95 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-[1400px] items-center justify-between px-6">
-        <div className="text-sm font-extrabold tracking-[0.16em] text-white">
-          INDIA MACRO TERMINAL
+    <nav
+      style={{
+        background: "var(--nav)",
+        borderBottom: "1px solid var(--border)",
+        display: "flex",
+        alignItems: "center",
+        padding: "0 20px",
+        height: 48,
+        position: "sticky",
+        top: 0,
+        zIndex: 100,
+      }}
+    >
+      {/* Logo */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginRight: 32 }}>
+        <div
+          style={{
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            background: "linear-gradient(135deg, #1d4ed8, #7c3aed)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 14,
+            fontWeight: 900,
+            color: "#fff",
+          }}
+        >
+          ⬡
         </div>
-
-        <nav className="hidden items-center gap-6 text-xs font-medium tracking-[0.12em] text-[var(--muted)] lg:flex">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.label}
-              to={item.href}
-              className={({ isActive }) =>
-                `transition hover:text-white ${
-                  isActive ? "text-white underline underline-offset-8" : ""
-                }`
-              }
-            >
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-
-        <div className="flex items-center gap-4 text-xs">
-          <span className="text-[var(--green)]">● LIVE</span>
-          <span className="text-white tabular-nums">{formatTime(time)} IST</span>
+        <div>
+          <div style={{ color: "#f1f5f9", fontSize: 13, fontWeight: 700, letterSpacing: 1, fontFamily: "var(--mono)" }}>
+            INDIA MACRO TERMINAL
+          </div>
+          <div style={{ color: "#64748b", fontSize: 9, letterSpacing: 0.5 }}>
+            Real-time Intelligence. Smarter Decisions.
+          </div>
         </div>
       </div>
-    </header>
+
+      {/* Nav Links */}
+      {LINKS.map((l) => {
+        const isActive = location.pathname === l.path;
+        return (
+          <NavLink
+            key={l.path}
+            to={l.path}
+            style={{
+              background: "none",
+              textDecoration: "none",
+              color: isActive ? "#f1f5f9" : "#64748b",
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: 0.8,
+              padding: "0 14px",
+              height: 48,
+              display: "flex",
+              alignItems: "center",
+              borderBottom: isActive ? "2px solid #3b82f6" : "2px solid transparent",
+              transition: "all 0.15s",
+              fontFamily: "var(--mono)",
+            }}
+          >
+            {l.label}
+          </NavLink>
+        );
+      })}
+
+      {/* Right side */}
+      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span
+            style={{
+              width: 7,
+              height: 7,
+              borderRadius: "50%",
+              background: "#22c55e",
+              display: "inline-block",
+              boxShadow: "0 0 6px #22c55e",
+            }}
+          />
+          <span style={{ color: "#22c55e", fontSize: 11, fontWeight: 700, fontFamily: "var(--mono)" }}>LIVE</span>
+        </div>
+        <LiveClock />
+        <span style={{ color: "#64748b", fontSize: 16 }}>🔍</span>
+        <span style={{ color: "#64748b", fontSize: 16, position: "relative" }}>
+          🔔
+          <span
+            style={{
+              position: "absolute",
+              top: -4,
+              right: -4,
+              background: "#ef4444",
+              borderRadius: "50%",
+              fontSize: 8,
+              color: "#fff",
+              width: 14,
+              height: 14,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontWeight: 700,
+            }}
+          >
+            3
+          </span>
+        </span>
+        <span style={{ color: "#64748b", fontSize: 16 }}>👤</span>
+      </div>
+    </nav>
   );
 }

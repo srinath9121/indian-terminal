@@ -1,18 +1,24 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --bg: #0B0F17;
-  --card: #111826;
-  --border: #1f2937;
+  --bg: #070b12;
+  --bg-darker: #060a10;
+  --card: #0f1520;
+  --card-alt: #0d1219;
+  --nav: #0a0e14;
+  --border: #1e2530;
   --green: #22c55e;
   --red: #ef4444;
-  --yellow: #facc15;
-  --text: #e5e7eb;
-  --muted: #9ca3af;
+  --yellow: #f59e0b;
+  --blue: #3b82f6;
+  --text: #f1f5f9;
+  --muted: #64748b;
+  --muted-bright: #94a3b8;
+  --mono: 'JetBrains Mono', 'Fira Code', monospace;
 }
 
 * {
@@ -21,47 +27,45 @@
 
 html, body, #root {
   margin: 0;
-  min-height: 100%;
+  min-height: 100vh;
   background: var(--bg);
   color: var(--text);
-  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--mono);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-body {
-  background: var(--bg);
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-darker);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
 }
 
 ::selection {
-  background: rgba(34, 197, 94, 0.25);
+  background: rgba(59, 130, 246, 0.2);
+  color: var(--blue);
 }
 
-.terminal-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
+.terminal-shadow {
+  box-shadow: 0 0 40px rgba(29, 78, 216, 0.05);
 }
 
-.terminal-section-title {
-  font-size: 0.75rem;
-  line-height: 1rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
-  margin-bottom: 12px;
+/* Animations */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.terminal-muted {
-  color: var(--muted);
-}
-
-.terminal-live {
-  color: var(--green);
-}
-
-.terminal-danger {
-  color: var(--red);
-}
-
-.terminal-warn {
-  color: var(--yellow);
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out forwards;
 }

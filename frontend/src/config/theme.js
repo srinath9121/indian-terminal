@@ -1,17 +1,25 @@
 export const theme = {
   colors: {
-    bg: "#0B0F17",
-    card: "#111826",
-    border: "#1f2937",
+    bg: "#070b12",
+    bgDarker: "#060a10",
+    card: "#0f1520",
+    cardAlt: "#0d1219",
+    nav: "#0a0e14",
+    border: "#1e2530",
     green: "#22c55e",
     red: "#ef4444",
-    yellow: "#facc15",
-    text: "#e5e7eb",
-    muted: "#9ca3af",
+    yellow: "#f59e0b",
+    blue: "#3b82f6",
+    text: "#f1f5f9",
+    muted: "#64748b",
+    mutedBright: "#94a3b8",
+  },
+  fonts: {
+    mono: "'JetBrains Mono', 'Fira Code', monospace",
   },
   layout: {
-    container: "max-w-[1400px] mx-auto px-6",
-    pageGap: "space-y-6",
-    sectionGap: "gap-6",
-  },
+    navHeight: "48px",
+    gap: "14px",
+    padding: "16px 20px",
+  }
 };

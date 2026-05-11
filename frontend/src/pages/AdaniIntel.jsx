@@ -1,9 +1,41 @@
 import Layout from "../components/layout/Layout";
 import Card from "../components/ui/Card";
-import Grid from "../components/ui/Grid";
 import Badge from "../components/ui/Badge";
 import Section from "../components/ui/Section";
 import { useTerminalStore } from "../store/useTerminalStore";
+
+function AdaniStockCard({ stock }) {
+  const dangerScore = 100 - stock.conf;
+  const isHighRisk = dangerScore > 60;
+  
+  return (
+    <Card key={stock.symbol}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <div>
+            <div style={{ color: "var(--muted)", fontSize: 9, fontWeight: 700, letterSpacing: 0.8, fontFamily: "var(--mono)", textTransform: "uppercase" }}>{stock.symbol}</div>
+            <div style={{ color: "var(--text)", fontSize: 20, fontWeight: 700, fontFamily: "var(--mono)", marginTop: 2 }}>₹{Number(stock.price).toLocaleString("en-IN", { minimumFractionDigits: 2 })}</div>
+          </div>
+          <Badge color={stock.decision === 'BUY' ? 'green' : stock.decision === 'SELL' ? 'red' : 'yellow'}>{stock.decision}</Badge>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9, fontFamily: "var(--mono)" }}>
+            <span style={{ color: "var(--muted)" }}>DANGER SCORE</span>
+            <span style={{ color: isHighRisk ? "var(--red)" : "var(--green)", fontWeight: 700 }}>{dangerScore}/100</span>
+          </div>
+          <div style={{ height: 4, width: "100%", background: "var(--border)", borderRadius: 2, overflow: "hidden" }}>
+            <div style={{ height: "100%", width: `${dangerScore}%`, background: isHighRisk ? "var(--red)" : "var(--green)", transition: "width 0.5s ease-out" }} />
+          </div>
+        </div>
+
+        <div style={{ color: "var(--muted-bright)", fontSize: 9, fontFamily: "var(--mono)", fontStyle: "italic", lineHeight: 1.4, borderTop: "1px solid var(--border)", paddingTop: 10 }}>
+          {stock.causalChain || "Analyzing macro transmission..."}
+        </div>
+      </div>
+    </Card>
+  );
+}
 
 export default function AdaniIntel() {
   const { adaniStocks, globalSignal, isLoading } = useTerminalStore();
@@ -11,92 +43,58 @@ export default function AdaniIntel() {
   if (isLoading && adaniStocks.length === 0) {
     return (
       <Layout>
-        <div className="flex h-screen items-center justify-center text-[var(--muted)] animate-pulse">
-          FETCHING ADANI INTELLIGENCE...
-        </div>
+        <div style={{ display: "flex", height: "80vh", alignItems: "center", justifyContent: "center", color: "var(--muted)", fontFamily: "var(--mono)", fontSize: 13 }}>CONNECTING TO ADANI INTELLIGENCE...</div>
       </Layout>
     );
   }
 
   return (
     <Layout>
-      <div className="space-y-6 animate-in fade-in duration-500">
-        <Grid cols={3}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }} className="animate-fade-in">
+        
+        {/* Adani Grid */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14 }}>
           {adaniStocks.map((stock) => (
-            <Card key={stock.symbol}>
-              <div className="flex h-full flex-col justify-between space-y-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="text-xs font-medium text-[var(--muted)] tracking-wider uppercase">
-                      {stock.symbol}
-                    </div>
-                    <div className="mt-1 text-2xl font-bold text-white">
-                      ₹{stock.price.toLocaleString()}
-                    </div>
-                  </div>
-                  <Badge tone={stock.direction === "up" ? "bullish" : "defensive"}>
-                    {stock.decision}
-                  </Badge>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-[var(--muted)]">Danger Score</span>
-                    <span className={stock.conf < 50 ? "text-[var(--red)]" : "text-[var(--green)]"}>
-                      {100 - stock.conf}/100
-                    </span>
-                  </div>
-                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--border)]">
-                    <div 
-                      className={`h-full transition-all duration-1000 ${stock.conf < 50 ? "bg-[var(--red)]" : "bg-[var(--green)]"}`}
-                      style={{ width: `${100 - stock.conf}%` }}
-                    />
-                  </div>
-                </div>
-
-                <div className="text-[10px] italic leading-relaxed text-[var(--muted)] line-clamp-2">
-                  {stock.causalChain || "Analyzing macro transmission..."}
-                </div>
-              </div>
-            </Card>
+            <AdaniStockCard key={stock.symbol} stock={stock} />
           ))}
-        </Grid>
+        </div>
 
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 14 }}>
           <Section title="ADANI CAUSAL CHAIN IN FOCUS">
-            <div className="flex flex-wrap gap-3">
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center" }}>
               {(globalSignal?.causal_chain || ["Macro Stable", "Inflation ↓", "Growth ↑", "Market ↑"]).map((step, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <div className="rounded-xl border border-[var(--border)] bg-[#0f1520] px-3 py-2 text-xs font-medium text-white shadow-sm transition-all hover:border-white/20">
+                <React.Fragment key={i}>
+                  <div style={{ background: "var(--nav)", border: "1px solid var(--border)", padding: "8px 12px", borderRadius: 8, color: "var(--text)", fontSize: 11, fontFamily: "var(--mono)" }}>
                     {step}
                   </div>
-                  {i < (globalSignal?.causal_chain?.length || 5) - 1 && (
-                    <span className="text-[var(--muted)] opacity-50">→</span>
+                  {i < (globalSignal?.causal_chain?.length || 4) - 1 && (
+                    <span style={{ color: "var(--muted)", fontSize: 14 }}>→</span>
                   )}
-                </div>
+                </React.Fragment>
               ))}
             </div>
-            <div className="mt-6 text-xs leading-relaxed text-[var(--muted)]">
+            <p style={{ color: "var(--muted)", fontSize: 10, fontFamily: "var(--mono)", marginTop: 16, lineHeight: 1.6 }}>
               This chain represents the deterministic transmission of macro stressors (Oil, USD/INR, Yields) 
-              into the Adani Group's capital structure and market valuation.
-            </div>
+              into the Adani Group's capital structure and market valuation. Each node is calculated based on real-time price momentum.
+            </p>
           </Section>
 
           <Section title="RISK EXPLAINER">
-            <div className="space-y-4">
-              <div className="rounded-lg border border-[var(--border)] bg-[#0d1320] p-4">
-                <div className="text-xs font-bold text-white uppercase tracking-wider mb-2">Group Correlation</div>
-                <div className="text-2xl font-bold text-[var(--green)]">0.42</div>
-                <div className="mt-1 text-[10px] text-[var(--muted)]">Moderate decouple from broad market</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ background: "var(--nav)", border: "1px solid var(--border)", borderRadius: 8, padding: 14 }}>
+                <div style={{ color: "var(--muted)", fontSize: 9, fontWeight: 700, fontFamily: "var(--mono)", marginBottom: 4 }}>GROUP CORRELATION</div>
+                <div style={{ color: "var(--green)", fontSize: 24, fontWeight: 900, fontFamily: "var(--mono)" }}>0.42</div>
+                <div style={{ color: "var(--muted-bright)", fontSize: 9, fontFamily: "var(--mono)", marginTop: 2 }}>Moderate decouple from broad market</div>
               </div>
-              <div className="rounded-lg border border-[var(--border)] bg-[#0d1320] p-4">
-                <div className="text-xs font-bold text-white uppercase tracking-wider mb-2">Refinancing Outlook</div>
-                <div className="text-2xl font-bold text-[var(--muted)]">STABLE</div>
-                <div className="mt-1 text-[10px] text-[var(--muted)]">Debt-to-EBITDA within threshold</div>
+              <div style={{ background: "var(--nav)", border: "1px solid var(--border)", borderRadius: 8, padding: 14 }}>
+                <div style={{ color: "var(--muted)", fontSize: 9, fontWeight: 700, fontFamily: "var(--mono)", marginBottom: 4 }}>REFINANCING OUTLOOK</div>
+                <div style={{ color: "var(--muted-bright)", fontSize: 20, fontWeight: 800, fontFamily: "var(--mono)" }}>STABLE</div>
+                <div style={{ color: "var(--muted-bright)", fontSize: 9, fontFamily: "var(--mono)", marginTop: 2 }}>Debt-to-EBITDA within target threshold</div>
               </div>
             </div>
           </Section>
         </div>
+
       </div>
     </Layout>
   );

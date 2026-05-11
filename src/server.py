@@ -831,6 +831,81 @@ async def api_sectors():
         return {"data": []}
 
 # ─────────────────────────────────────────────────────
+# FRONTEND ALIAS ENDPOINTS (for Zustand service layer)
+# These thin wrappers normalise the payload shape the
+# frontend expects without duplicating any fetch logic.
+# ─────────────────────────────────────────────────────
+
+@app.get("/api/market/overview")
+async def api_market_overview():
+    """Alias → aggregates /api/indices + /api/fii-history into one call."""
+    mkt = GLOBAL_STATE.get("market", {})
+    fii_data = get_cached("fii_dii") or {}
+    return {
+        "nifty":     mkt.get("NIFTY"),
+        "sensex":    mkt.get("SENSEX"),
+        "bankNifty": mkt.get("BANKNIFTY"),
+        "vix":       mkt.get("INDIAVIX"),
+        "usdInr":    mkt.get("USD/INR"),
+        "brent":     mkt.get("BRENT"),
+        "fiiFlows": {
+            "netValue":  fii_data.get("fii", {}).get("net", 0),
+            "trend":     "outflow" if (fii_data.get("fii", {}).get("net", 0) or 0) < 0 else "inflow",
+        },
+        "diiFlows": {
+            "netValue": fii_data.get("dii", {}).get("net", 0),
+            "trend":    "outflow" if (fii_data.get("dii", {}).get("net", 0) or 0) < 0 else "inflow",
+        },
+        "dataQuality": mkt.get("data_quality", "LIVE"),
+        "timestamp": GLOBAL_STATE.get("last_sync"),
+    }
+
+@app.get("/api/macro/indicators")
+async def api_macro_indicators():
+    """Alias → pulls IRS, regime and commodity data from GLOBAL_STATE."""
+    sig = GLOBAL_STATE.get("signals", {})
+    mkt = GLOBAL_STATE.get("market", {})
+    brent = mkt.get("BRENT") or {}
+    usd   = mkt.get("USD/INR") or {}
+    return {
+        "irs": {
+            "score": sig.get("irs", 52),
+            "zone":  sig.get("zone", "MODERATE"),
+            "mode":  sig.get("mode", "NEUTRAL"),
+        },
+        "regime":    sig.get("macro_regime", "NEUTRAL"),
+        "brentCrude": {
+            "price":     brent.get("price", 0),
+            "direction": "up" if brent.get("is_up") else "down",
+        },
+        "usdInr": {
+            "price":     usd.get("price", 83.5),
+            "direction": "up" if usd.get("is_up") else "down",
+        },
+        "dataQuality": mkt.get("data_quality", "LIVE"),
+        "timestamp": GLOBAL_STATE.get("last_sync"),
+    }
+
+@app.get("/api/adani/stocks")
+async def api_adani_stocks():
+    """Alias → returns Adani prices + model output in the shape the store expects."""
+    adani = GLOBAL_STATE.get("adani_prices", {})
+    result = []
+    for sym, data in adani.items():
+        result.append({
+            "symbol":      sym,
+            "price":       data.get("price", 0),
+            "change":      data.get("change", 0),
+            "pctChange":   data.get("pct", 0),
+            "direction":   "up" if data.get("is_up") else "down",
+            "dangerScore": data.get("danger_score", 50),
+            "decision":    data.get("decision", "HOLD"),
+            "causalChain": data.get("causal_chain", ""),
+        })
+    return {"stocks": result, "timestamp": GLOBAL_STATE.get("last_sync")}
+
+
+# ─────────────────────────────────────────────────────
 # MACRO INTELLIGENCE ENDPOINTS
 # ─────────────────────────────────────────────────────
 from src.macro_fetcher import MacroFetcher

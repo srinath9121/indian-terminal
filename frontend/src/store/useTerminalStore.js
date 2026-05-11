@@ -14,7 +14,7 @@ export const useTerminalStore = create((set, get) => ({
   lastUpdated:  null,
 
   fetchData: async () => {
-    set({ isLoading: true });
+    if (!get().marketData) set({ isLoading: true });
 
     const [market, macro, adani, signal, alerts] = await Promise.all([
       getMarketOverview(),

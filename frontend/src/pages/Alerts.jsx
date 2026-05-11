@@ -1,41 +1,24 @@
 import { useState } from "react";
 import Layout from "../components/layout/Layout";
 import Card from "../components/ui/Card";
-import Grid from "../components/ui/Grid";
 import Section from "../components/ui/Section";
 import Badge from "../components/ui/Badge";
 import { useTerminalStore } from "../store/useTerminalStore";
 
 const PRIORITY_META = {
-  High:   { badge: "defensive", dot: "#ef4444", label: "HIGH" },
-  Medium: { badge: "neutral",   dot: "#f59e0b", label: "MED"  },
-  Low:    { badge: "bullish",   dot: "#22c55e", label: "LOW"  },
+  High:   { color: "red",    dot: "#ef4444", label: "HIGH" },
+  Medium: { color: "yellow", dot: "#f59e0b", label: "MED"  },
+  Low:    { color: "green",  dot: "#22c55e", label: "LOW"  },
 };
 
 const CATEGORIES = ["All", "Macro", "Market", "Commodities", "FII/DII", "Risk"];
-
-const FALLBACK_ALERTS = [
-  { id: "F1", title: "Crude Oil Prices Surge Above $85/barrel", description: "Brent at $85.1/barrel — import bill pressure rising", category: "Commodities", priority: "High",   timestamp: new Date().toISOString() },
-  { id: "F2", title: "RBI Maintains Repo Rate at 6.50%",         description: "Policy stance unchanged — liquidity remains tight", category: "Macro",       priority: "High",   timestamp: new Date().toISOString() },
-  { id: "F3", title: "FII Net Selling Continues",                 description: "Net FII outflow ₹3,247 Cr today",                   category: "Market",      priority: "High",   timestamp: new Date().toISOString() },
-  { id: "F4", title: "Nifty 50 Breaks Below Support",            description: "Broad sell-off detected — monitor next levels",     category: "Market",      priority: "Medium", timestamp: new Date().toISOString() },
-];
-
-function formatTime(ts) {
-  try {
-    return new Date(ts).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
-  } catch {
-    return "--";
-  }
-}
 
 export default function Alerts() {
   const { alertsData, isLoading } = useTerminalStore();
   const [priorityFilter, setPriorityFilter] = useState("All");
   const [categoryFilter, setCategoryFilter] = useState("All");
 
-  const rawAlerts = alertsData?.alerts?.length > 0 ? alertsData.alerts : FALLBACK_ALERTS;
-
+  const rawAlerts = alertsData?.alerts || [];
   const filtered = rawAlerts.filter((a) => {
     const pMatch = priorityFilter === "All" || a.priority === priorityFilter;
     const cMatch = categoryFilter === "All" || a.category === categoryFilter;
@@ -47,7 +30,6 @@ export default function Alerts() {
   const low    = alertsData?.low_count    ?? rawAlerts.filter((a) => a.priority === "Low").length;
   const total  = alertsData?.total        ?? rawAlerts.length;
 
-  // Donut chart using conic-gradient
   const highPct   = total > 0 ? (high   / total) * 100 : 0;
   const mediumPct = total > 0 ? (medium / total) * 100 : 0;
   const donutBg   = `conic-gradient(
@@ -58,67 +40,71 @@ export default function Alerts() {
 
   return (
     <Layout>
-      <div className="space-y-6 animate-in fade-in duration-500">
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }} className="animate-fade-in">
 
-        {/* ── Stat Cards ─────────────────────────────────────────────────── */}
-        <Grid cols={4}>
+        {/* Stats Row */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
           {[
-            ["High Priority",   high,   "defensive"],
-            ["Medium Priority", medium, "neutral"],
-            ["Low Priority",    low,    "bullish"],
-            ["Total Alerts",    total,  "neutral"],
-          ].map(([label, value, tone]) => (
-            <Card key={label}>
-              <div className="text-xs uppercase tracking-[0.1em] text-[var(--muted)]">{label}</div>
-              <div className="mt-2 text-3xl font-bold text-white">{value}</div>
-              <div className="mt-3">
-                <Badge tone={tone}>{label.split(" ")[0]}</Badge>
-              </div>
+            { label: "HIGH PRIORITY", val: high,   color: "var(--red)" },
+            { label: "MEDIUM PRIORITY", val: medium, color: "var(--yellow)" },
+            { label: "LOW PRIORITY", val: low,    color: "var(--green)" },
+            { label: "TOTAL ALERTS", val: total,  color: "var(--blue)" },
+          ].map(s => (
+            <Card key={s.label}>
+              <div style={{ color: "var(--muted)", fontSize: 9, fontWeight: 700, letterSpacing: 1, fontFamily: "var(--mono)", marginBottom: 4 }}>{s.label}</div>
+              <div style={{ color: "var(--text)", fontSize: 24, fontWeight: 700, fontFamily: "var(--mono)" }}>{s.val}</div>
+              <div style={{ marginTop: 6 }}><Badge color={s.color.includes("red") ? "red" : s.color.includes("yellow") ? "yellow" : s.color.includes("green") ? "green" : "blue"}>ACTIVE</Badge></div>
             </Card>
           ))}
-        </Grid>
+        </div>
 
-        {/* ── Main Panel ─────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[0.75fr_1.7fr_0.9fr]">
-
-          {/* Filter Panel */}
-          <Section title="FILTER ALERTS">
-            <div className="space-y-5">
+        {/* Main Content */}
+        <div style={{ display: "grid", gridTemplateColumns: "250px 1fr 300px", gap: 14 }}>
+          
+          <Section title="FILTER">
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div>
-                <div className="mb-2 text-xs uppercase tracking-wider text-[var(--muted)]">Priority</div>
-                <div className="flex flex-col gap-1.5">
-                  {["All", "High", "Medium", "Low"].map((p) => (
+                <div style={{ color: "var(--muted)", fontSize: 9, fontWeight: 700, marginBottom: 8 }}>PRIORITY</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  {["All", "High", "Medium", "Low"].map(p => (
                     <button
                       key={p}
                       onClick={() => setPriorityFilter(p)}
-                      className={`flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs font-medium transition-all ${
-                        priorityFilter === p
-                          ? "border-white/30 bg-white/10 text-white"
-                          : "border-[var(--border)] text-[var(--muted)] hover:border-white/20 hover:text-white"
-                      }`}
+                      style={{
+                        background: priorityFilter === p ? "var(--nav)" : "transparent",
+                        border: `1px solid ${priorityFilter === p ? "var(--muted)" : "var(--border)"}`,
+                        color: priorityFilter === p ? "var(--text)" : "var(--muted)",
+                        padding: "6px 10px",
+                        borderRadius: 4,
+                        fontSize: 10,
+                        textAlign: "left",
+                        cursor: "pointer",
+                        fontFamily: "var(--mono)"
+                      }}
                     >
-                      {p === "High"   && <span className="h-2 w-2 flex-shrink-0 rounded-full bg-red-500" />}
-                      {p === "Medium" && <span className="h-2 w-2 flex-shrink-0 rounded-full bg-amber-400" />}
-                      {p === "Low"    && <span className="h-2 w-2 flex-shrink-0 rounded-full bg-green-500" />}
-                      {p === "All"    && <span className="h-2 w-2 flex-shrink-0 rounded-full bg-[var(--muted)]" />}
                       {p}
                     </button>
                   ))}
                 </div>
               </div>
-
               <div>
-                <div className="mb-2 text-xs uppercase tracking-wider text-[var(--muted)]">Category</div>
-                <div className="flex flex-col gap-1.5">
-                  {CATEGORIES.map((c) => (
+                <div style={{ color: "var(--muted)", fontSize: 9, fontWeight: 700, marginBottom: 8 }}>CATEGORY</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  {CATEGORIES.map(c => (
                     <button
                       key={c}
                       onClick={() => setCategoryFilter(c)}
-                      className={`w-full rounded-lg border px-3 py-2 text-left text-xs font-medium transition-all ${
-                        categoryFilter === c
-                          ? "border-white/30 bg-white/10 text-white"
-                          : "border-[var(--border)] text-[var(--muted)] hover:border-white/20 hover:text-white"
-                      }`}
+                      style={{
+                        background: categoryFilter === c ? "var(--nav)" : "transparent",
+                        border: `1px solid ${categoryFilter === c ? "var(--muted)" : "var(--border)"}`,
+                        color: categoryFilter === c ? "var(--text)" : "var(--muted)",
+                        padding: "6px 10px",
+                        borderRadius: 4,
+                        fontSize: 10,
+                        textAlign: "left",
+                        cursor: "pointer",
+                        fontFamily: "var(--mono)"
+                      }}
                     >
                       {c}
                     </button>
@@ -128,37 +114,26 @@ export default function Alerts() {
             </div>
           </Section>
 
-          {/* Alert List */}
-          <Section title={`ALL ALERTS${isLoading ? "  ·  LOADING..." : `  ·  ${filtered.length} shown`}`}>
-            <div className="space-y-2">
+          <Section title={`LIVE ALERTS ${isLoading ? "(POLLING...)" : ""}`}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {filtered.length === 0 ? (
-                <div className="py-10 text-center text-xs text-[var(--muted)]">
-                  No alerts match the selected filters.
-                </div>
+                <div style={{ padding: "40px 0", textAlign: "center", color: "var(--muted)", fontSize: 11, fontFamily: "var(--mono)" }}>NO ALERTS MATCHING FILTERS</div>
               ) : (
-                filtered.map((a) => {
-                  const meta = PRIORITY_META[a.priority] ?? PRIORITY_META.Low;
+                filtered.map(a => {
+                  const meta = PRIORITY_META[a.priority] || PRIORITY_META.Low;
                   return (
-                    <div
-                      key={a.id}
-                      className="flex items-start justify-between gap-4 rounded-xl border border-[var(--border)] bg-[#0d1320]/60 p-3 transition-all hover:border-white/20 hover:bg-[#0f1622]"
-                    >
-                      <div className="flex items-start gap-3">
-                        <span
-                          className="mt-[5px] h-2 w-2 flex-shrink-0 rounded-full"
-                          style={{ backgroundColor: meta.dot }}
-                        />
+                    <div key={a.id} style={{ background: "var(--nav)", border: "1px solid var(--border)", padding: 12, borderRadius: 8, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                      <div style={{ display: "flex", gap: 12 }}>
+                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: meta.dot, marginTop: 4, boxShadow: `0 0 8px ${meta.dot}` }} />
                         <div>
-                          <div className="text-sm font-medium text-white">{a.title}</div>
-                          {a.description && (
-                            <div className="mt-0.5 text-xs text-[var(--muted)]">{a.description}</div>
-                          )}
-                          <div className="mt-1 text-xs text-[var(--muted)] opacity-60">{a.category}</div>
+                          <div style={{ color: "var(--text)", fontSize: 12, fontWeight: 700, fontFamily: "var(--mono)" }}>{a.title}</div>
+                          <div style={{ color: "var(--muted-bright)", fontSize: 10, marginTop: 2, fontFamily: "var(--mono)" }}>{a.description}</div>
+                          <div style={{ color: "var(--muted)", fontSize: 9, marginTop: 6, fontFamily: "var(--mono)", textTransform: "uppercase" }}>{a.category}</div>
                         </div>
                       </div>
-                      <div className="flex flex-shrink-0 flex-col items-end gap-2">
-                        <Badge tone={meta.badge}>{meta.label}</Badge>
-                        <div className="text-xs text-[var(--muted)]">{formatTime(a.timestamp)}</div>
+                      <div style={{ textAlign: "right" }}>
+                        <Badge color={meta.color}>{meta.label}</Badge>
+                        <div style={{ color: "var(--muted)", fontSize: 9, marginTop: 8, fontFamily: "var(--mono)" }}>{new Date(a.timestamp).toLocaleTimeString()}</div>
                       </div>
                     </div>
                   );
@@ -167,55 +142,30 @@ export default function Alerts() {
             </div>
           </Section>
 
-          {/* Right Panel */}
-          <div className="space-y-6">
-            {/* Donut Summary */}
-            <Section title="ALERT SUMMARY">
-              <div className="flex flex-col items-center gap-4">
-                <div className="relative flex h-[160px] w-[160px] items-center justify-center">
-                  <div className="h-full w-full rounded-full" style={{ background: donutBg }} />
-                  <div className="absolute h-[108px] w-[108px] rounded-full bg-[#0b1019]" />
-                  <div className="absolute flex flex-col items-center">
-                    <div className="text-2xl font-bold text-white">{total}</div>
-                    <div className="text-[10px] uppercase tracking-wider text-[var(--muted)]">alerts</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <Section title="DISTRIBUTION">
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
+                <div style={{ position: "relative", width: 140, height: 140, borderRadius: "50%", background: donutBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div style={{ width: 100, height: 100, borderRadius: "50%", background: "var(--bg)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ color: "var(--text)", fontSize: 24, fontWeight: 900, fontFamily: "var(--mono)" }}>{total}</div>
+                    <div style={{ color: "var(--muted)", fontSize: 8, fontFamily: "var(--mono)" }}>TOTAL</div>
                   </div>
                 </div>
-                <div className="flex w-full flex-col gap-2 text-xs">
-                  {[["High", high, "#ef4444"], ["Medium", medium, "#f59e0b"], ["Low", low, "#22c55e"]].map(
-                    ([label, count, color]) => (
-                      <div key={label} className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
-                          <span className="text-[var(--muted)]">{label}</span>
-                        </div>
-                        <span className="font-semibold text-white">{count}</span>
+                <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 6 }}>
+                  {[["High", high, "var(--red)"], ["Medium", medium, "var(--yellow)"], ["Low", low, "var(--green)"]].map(([l, c, col]) => (
+                    <div key={l} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 10, fontFamily: "var(--mono)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ width: 6, height: 6, borderRadius: "50%", background: col }} />
+                        <span style={{ color: "var(--muted)" }}>{l}</span>
                       </div>
-                    )
-                  )}
-                </div>
-              </div>
-            </Section>
-
-            {/* Recently Triggered */}
-            <Section title="RECENTLY TRIGGERED">
-              <div className="space-y-3">
-                {rawAlerts.slice(0, 5).map((a) => {
-                  const dot = PRIORITY_META[a.priority]?.dot ?? "#888";
-                  return (
-                    <div key={a.id} className="border-b border-[var(--border)] pb-2 last:border-b-0 last:pb-0">
-                      <div className="flex items-start gap-2">
-                        <span
-                          className="mt-[5px] h-1.5 w-1.5 flex-shrink-0 rounded-full"
-                          style={{ backgroundColor: dot }}
-                        />
-                        <div className="text-xs leading-4 text-[var(--muted)]">{a.title}</div>
-                      </div>
+                      <span style={{ color: "var(--text)", fontWeight: 700 }}>{c}</span>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
             </Section>
           </div>
+
         </div>
       </div>
     </Layout>
